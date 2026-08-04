@@ -8,6 +8,10 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import java.util.List;
 
 @Repository
@@ -38,21 +42,31 @@ public class JdbcTransactionRepository implements TransactionRepository {
     };
 
     @Override
-    public int save(Transaction txn) {
+    public Transaction save(Transaction txn) {
         String sql = "INSERT INTO transactions (account_id, payee_id, payee_institution_name, amount, currency, type, status, description, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         LocalDateTime timestamp = txn.getTimestamp() != null ? txn.getTimestamp() : LocalDateTime.now();
-        return jdbcTemplate.update(
-            sql,
-            txn.getAccountId(),
-            txn.getPayeeId(),
-            txn.getPayeeInstitutionName(),
-            txn.getAmount(),
-            txn.getCurrency(),
-            txn.getType(),
-            txn.getStatus(),
-            txn.getDescription(),
-            timestamp
-        );
+
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            ps.setString(1, txn.getAccountId());
+            ps.setString(2, txn.getPayeeId());
+            ps.setString(3, txn.getPayeeInstitutionName());
+            ps.setBigDecimal(4, txn.getAmount());
+            ps.setString(5, txn.getCurrency());
+            ps.setString(6, txn.getType());
+            ps.setString(7, txn.getStatus());
+            ps.setString(8, txn.getDescription());
+            ps.setTimestamp(9, Timestamp.valueOf(timestamp));
+            return ps;
+        }, keyHolder);
+
+        Number key = keyHolder.getKey();
+        if (key != null) {
+            txn.setId(key.longValue());
+        }
+        return txn;
     }
 
     @Override
