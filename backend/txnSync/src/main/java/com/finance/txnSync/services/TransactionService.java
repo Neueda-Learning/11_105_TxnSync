@@ -48,13 +48,13 @@ public class TransactionService {
             transaction.setStatus("COMPLETED");
         }
 
-        // Save transaction
-        transactionRepository.save(transaction);
+        // Save transaction and get the persisted object with id
+        Transaction saved = transactionRepository.save(transaction);
 
-        // Evaluate active monitoring rules
-        evaluateRules(transaction);
+        // Evaluate active monitoring rules using the saved transaction (with id)
+        evaluateRules(saved);
 
-        return transaction;
+        return saved;
     }
 
     private void evaluateRules(Transaction transaction) {
