@@ -11,13 +11,13 @@ public class Rule {
     private BigDecimal thresholdAmount;
     private Integer timeWindowMinutes;
     private Integer transactionCount;
-    private boolean isActive;
+    private Boolean isActive;
 
     public Rule() {}
 
     public Rule(Long id, String ruleName, String ruleType, String severity, 
-                BigDecimal thresholdAmount, Integer timeWindowMinutes, 
-                Integer transactionCount, boolean isActive) {
+                BigDecimal thresholdAmount, Integer timeWindowMinutes,
+                Integer transactionCount, Boolean isActive) {
         this.id = id;
         this.ruleName = ruleName;
         this.ruleType = ruleType;
@@ -77,10 +77,14 @@ public class Rule {
         this.transactionCount = transactionCount; 
     }
 
-    public boolean isActive() { 
-        return isActive; 
+    public boolean isActive() {
+        return Boolean.TRUE.equals(isActive);
     }
-    public void setActive(boolean active) { 
+    public void setActive(Boolean active) {
         isActive = active; 
+    }
+
+    public Boolean getActive() {
+        return isActive;
     }
 }
