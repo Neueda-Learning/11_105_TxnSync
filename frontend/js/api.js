@@ -94,4 +94,22 @@ const AlertsApi = {
   updateStatus: (id, status, resolutionNotes) => patch(`/alerts/${id}/status`, { status, resolutionNotes }),
 };
 
-window.TxnSyncApi = { ApiError, AccountsApi, TransactionsApi, RulesApi, AlertsApi, API_BASE_URL };
+/** Spring Boot Actuator is on the classpath, so /actuator/health is a free, cheap connectivity probe. */
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+const HealthApi = {
+  check: async () => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(`${API_ORIGIN}/actuator/health`, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (!res.ok) return false;
+      const body = await res.json().catch(() => null);
+      return !body || body.status === 'UP';
+    } catch (e) {
+      return false;
+    }
+  },
+};
+
+window.TxnSyncApi = { ApiError, AccountsApi, TransactionsApi, RulesApi, AlertsApi, HealthApi, API_BASE_URL };
