@@ -3,7 +3,6 @@ package com.finance.txnSync.controllers;
 import com.finance.txnSync.models.Alert;
 import com.finance.txnSync.services.AlertService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,12 +33,6 @@ public class AlertController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(alert);
-    }
-
-    @PostMapping
-    public ResponseEntity<Alert> createAlert(@RequestBody Alert alert) {
-        Alert created = alertService.createAlert(alert);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PatchMapping("/{id}/status")
