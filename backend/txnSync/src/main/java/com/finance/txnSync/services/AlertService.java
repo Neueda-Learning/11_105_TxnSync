@@ -30,7 +30,29 @@ public class AlertService {
     }
 
     public boolean updateAlertStatus(Long id, String status, String resolutionNotes) {
-        int updated = alertRepository.updateStatus(id, status, resolutionNotes);
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException("Status is required.");
+        }
+
+        String normalizedStatus = status.trim().toUpperCase();
+        if (!normalizedStatus.equals("ACKNOWLEDGED")
+                && !normalizedStatus.equals("INVESTIGATING")
+                && !normalizedStatus.equals("DISMISSED")
+                && !normalizedStatus.equals("CLOSED")) {
+            throw new IllegalArgumentException("Unsupported alert status: " + status);
+        }
+
+        String sanitizedResolutionNotes = resolutionNotes == null ? null : resolutionNotes.trim();
+        if ((normalizedStatus.equals("DISMISSED") || normalizedStatus.equals("CLOSED"))
+                && (sanitizedResolutionNotes == null || sanitizedResolutionNotes.isEmpty())) {
+            throw new IllegalArgumentException("Resolution notes are required when status is " + normalizedStatus + ".");
+        }
+
+        if (sanitizedResolutionNotes != null && sanitizedResolutionNotes.isEmpty()) {
+            sanitizedResolutionNotes = null;
+        }
+
+        int updated = alertRepository.updateStatus(id, normalizedStatus, sanitizedResolutionNotes);
         return updated > 0;
     }
 }

@@ -36,15 +36,21 @@ public class AlertController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<String> updateAlertStatus(
+    public ResponseEntity<?> updateAlertStatus(
             @PathVariable Long id,
             @RequestBody Map<String, String> payload) {
-        String status = payload.get("status");
-        String resolutionNotes = payload.get("resolutionNotes");
-        boolean updated = alertService.updateAlertStatus(id, status, resolutionNotes);
-        if (updated) {
-            return ResponseEntity.ok("Alert status updated successfully.");
+        try {
+            String status = payload.get("status");
+            String resolutionNotes = payload.get("resolutionNotes");
+            boolean updated = alertService.updateAlertStatus(id, status, resolutionNotes);
+            if (updated) {
+                return ResponseEntity.ok(Map.of("message", "Alert status updated successfully."));
+            }
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(Map.of("message", e.getMessage()));
         }
-        return ResponseEntity.notFound().build();
     }
 }
