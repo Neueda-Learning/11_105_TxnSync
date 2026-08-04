@@ -27,6 +27,17 @@ To actually exercise the app against the live backend during local development, 
 
 Then open your static server's URL (e.g. `http://localhost:5500`) in that window.
 
+## Known backend limitation: transaction IDs and rule-triggered alerts
+
+Found while testing the New Transaction flow against a live backend, and left as-is since it's a backend defect, not a frontend one: `JdbcTransactionRepository.save()` never captures the database-generated id and writes it back onto the `Transaction` object. Two effects, confirmed against the running API:
+
+- Every successful `POST /transactions` response comes back with `"id": null`.
+- `TransactionService.evaluateRules()` uses that (missing) id when it inserts an `Alert` for a triggered rule — `transactionId` ends up `0`, which violates the `alerts.transaction_id` foreign key, so the whole request throws a 500. **The transaction is committed to the database anyway** (the insert that succeeds happens before the one that fails), so the alert simply never gets created and the caller sees a false failure.
+
+The frontend works around both by re-fetching `GET /transactions` after a create and matching on the submitted fields (account, payee, amount, currency, type, recent timestamp) to recover the real row — see `findRecentMatchingTransaction()` in [js/transactions.js](js/transactions.js). When a create 500s but the transaction is found to have landed anyway, the UI surfaces an amber "recorded, but…" toast instead of a hard error, naming this defect explicitly rather than presenting it as a frontend bug.
+
+The real fix belongs in the backend (capture the key with a `KeyHolder` in `JdbcTransactionRepository.save()` and set it on the transaction before `evaluateRules()` runs), but that change was intentionally left out of this frontend-only build.
+
 ## Folder structure
 
 ```

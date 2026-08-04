@@ -119,7 +119,7 @@ function getToastStack() {
   return stack;
 }
 
-const TOAST_ICONS = { success: 'fa-circle-check', error: 'fa-circle-exclamation', info: 'fa-circle-info' };
+const TOAST_ICONS = { success: 'fa-circle-check', error: 'fa-circle-exclamation', info: 'fa-circle-info', warning: 'fa-triangle-exclamation' };
 
 function showToast({ type = 'info', title, desc = '', duration = 4200 }) {
   const stack = getToastStack();
@@ -147,6 +147,7 @@ const Toast = {
   success: (title, desc) => showToast({ type: 'success', title, desc }),
   error: (title, desc) => showToast({ type: 'error', title, desc }),
   info: (title, desc) => showToast({ type: 'info', title, desc }),
+  warning: (title, desc) => showToast({ type: 'warning', title, desc, duration: 6500 }),
 };
 
 /* ---------------- Modal ---------------- */

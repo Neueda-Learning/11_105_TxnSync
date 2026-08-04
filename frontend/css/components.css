@@ -254,6 +254,8 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
 .toast.error { border-left-color: var(--color-danger); }
 .toast.info .toast-icon { background: var(--color-info-light); color: var(--color-info); }
 .toast.info { border-left-color: var(--color-info); }
+.toast.warning .toast-icon { background: var(--color-warning-light); color: var(--color-warning); }
+.toast.warning { border-left-color: var(--color-warning); }
 .toast-content { flex: 1; min-width: 0; }
 .toast-title { font-size: 13px; font-weight: 700; color: var(--color-text-primary); }
 .toast-desc { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }

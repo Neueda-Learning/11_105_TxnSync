@@ -222,6 +222,10 @@ function newTxnFormHtml() {
           <textarea class="form-control" id="f-description" maxlength="255" placeholder="What is this transaction for?"></textarea>
         </div>
       </div>
+      <p class="form-hint" style="margin-top: var(--space-3);">
+        <i class="fa-solid fa-circle-info"></i>
+        A known backend defect can cause transactions that trip a monitoring rule to report an error even though they were saved — see the warning toast and <span class="mono">frontend/README.md</span> if that happens.
+      </p>
     </form>
   `;
 }
@@ -261,6 +265,33 @@ function openNewTransactionModal() {
   });
 }
 
+/**
+ * The backend never returns a generated transaction id (JdbcTransactionRepository.save()
+ * doesn't capture the auto-increment key — see README "Known backend limitation"), and
+ * when a rule triggers, the alert insert that follows fails its FK constraint and the
+ * whole request 500s even though the transaction row was already committed. Both cases
+ * are worked around here by re-fetching and matching on the submitted fields rather than
+ * trusting the response.
+ */
+async function findRecentMatchingTransaction(payload, withinMs = 15000) {
+  try {
+    const list = await TxnSyncApi.TransactionsApi.list();
+    const cutoff = Date.now() - withinMs;
+    const candidates = list.filter((t) =>
+      t.accountId === payload.accountId &&
+      t.payeeId === payload.payeeId &&
+      Number(t.amount) === Number(payload.amount) &&
+      t.currency === payload.currency &&
+      t.type === payload.type &&
+      new Date(t.timestamp).getTime() >= cutoff
+    );
+    candidates.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    return candidates[0] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function submitNewTransaction(handle) {
   const overlay = handle.overlay;
   if (!validateTxnForm(overlay)) return;
@@ -282,18 +313,42 @@ async function submitNewTransaction(handle) {
 
   try {
     const alertsBefore = await TxnSyncApi.AlertsApi.list().catch(() => []);
-    const created = await TxnSyncApi.TransactionsApi.create(payload);
+    let created = null;
+    let alertCreationFailed = false;
+
+    try {
+      created = await TxnSyncApi.TransactionsApi.create(payload);
+    } catch (createErr) {
+      // Could be the known "rule triggered -> alert insert fails" defect. Check whether
+      // the transaction landed anyway before treating this as a genuine failure.
+      const recovered = await findRecentMatchingTransaction(payload);
+      if (!recovered) throw createErr;
+      created = recovered;
+      alertCreationFailed = true;
+    }
+
+    if (!created.id) {
+      const resolved = await findRecentMatchingTransaction(payload);
+      if (resolved) created = resolved;
+    }
+
     const alertsAfter = await TxnSyncApi.AlertsApi.list().catch(() => []);
-    const newAlerts = alertsAfter.filter((a) => a.transactionId === created.id && !alertsBefore.some((b) => b.id === a.id));
+    const newAlerts = alertsAfter.filter((a) => !alertsBefore.some((b) => b.id === a.id));
+    const idLabel = created.id ? ` #${created.id}` : '';
 
     handle.close();
-    if (newAlerts.length > 0) {
+    if (alertCreationFailed) {
+      TxnSyncUI.Toast.warning(
+        `Transaction${idLabel} recorded`,
+        'This tripped a monitoring rule, but the backend failed to create the resulting alert (a known backend defect — see frontend/README.md). The transaction itself was saved.'
+      );
+    } else if (newAlerts.length > 0) {
       TxnSyncUI.Toast.info(
-        `Transaction #${created.id} processed`,
+        `Transaction${idLabel} processed`,
         `${newAlerts.length} monitoring alert${newAlerts.length > 1 ? 's' : ''} triggered — review on the Alerts page.`
       );
     } else {
-      TxnSyncUI.Toast.success(`Transaction #${created.id} processed`, 'No monitoring rules were triggered.');
+      TxnSyncUI.Toast.success(`Transaction${idLabel} processed`, 'No monitoring rules were triggered.');
     }
     loadTransactions();
   } catch (err) {
