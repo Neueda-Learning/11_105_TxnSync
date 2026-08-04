@@ -50,8 +50,8 @@ public class JdbcAlertRepository implements AlertRepository {
     @Override
     public int updateStatus(Long id, String status, String resolutionNotes) {
         return jdbcTemplate.update(
-            "UPDATE alerts SET status = ?, resolution_notes = ?, acknowledged_at = ? WHERE id = ?",
-            status, resolutionNotes, LocalDateTime.now(), id
+            "UPDATE alerts SET status = ?, resolution_notes = COALESCE(?, resolution_notes), acknowledged_at = CASE WHEN ? IN ('ACKNOWLEDGED', 'INVESTIGATING') AND acknowledged_at IS NULL THEN ? ELSE acknowledged_at END WHERE id = ?",
+            status, resolutionNotes, status, LocalDateTime.now(), id
         );
     }
 
