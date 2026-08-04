@@ -196,25 +196,6 @@ function openModal({ title, subtitle = '', bodyHtml = '', footerHtml = '', size 
   return handle;
 }
 
-function confirmModal({ title, message, confirmLabel = 'Confirm', tone = 'primary', onConfirm }) {
-  const handle = openModal({
-    title,
-    bodyHtml: `<p style="font-size:13.5px;color:var(--color-text-secondary);line-height:1.6;">${escapeHtml(message)}</p>`,
-    footerHtml: `
-      <button class="btn btn-secondary" data-cancel>Cancel</button>
-      <button class="btn btn-${tone === 'danger' ? 'danger' : 'primary'}" data-confirm>${escapeHtml(confirmLabel)}</button>
-    `,
-    onMount: (h) => {
-      h.overlay.querySelector('[data-cancel]').addEventListener('click', h.close);
-      h.overlay.querySelector('[data-confirm]').addEventListener('click', async () => {
-        await onConfirm();
-        h.close();
-      });
-    },
-  });
-  return handle;
-}
-
 /* ---------------- State renderers (loading / empty / error) ---------------- */
 
 function renderSkeletonRows(tbody, columnCount, rowCount = 6) {
@@ -254,6 +235,6 @@ function renderBlockState(container, { icon = 'fa-inbox', title, desc = '', acti
 window.TxnSyncUI = {
   escapeHtml, formatCurrency, formatNumber, formatDate, formatDateTime, formatRelativeTime,
   titleCase, debounce, statusBadge, badgeHtml, toneFor,
-  Toast, openModal, confirmModal,
+  Toast, openModal,
   renderSkeletonRows, renderTableMessageRow, renderBlockState,
 };
