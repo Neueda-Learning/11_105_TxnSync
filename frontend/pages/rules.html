@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rules · TxnSync</title>
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+</head>
+<body data-page="rules" data-title="Monitoring Rules" data-subtitle="Configure the thresholds that trigger alerts" data-root="../">
+
+  <section class="card">
+    <div class="card-header">
+      <div class="card-header-titles">
+        <h2>All Rules</h2>
+        <p>Rules are evaluated against every transaction as it's processed</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="toolbar">
+        <div class="toolbar-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" class="form-control" id="ruleSearch" placeholder="Search rule name or type…" />
+        </div>
+        <div class="toolbar-filters">
+          <select class="form-control" id="ruleStatusFilter">
+            <option value="">All rules</option>
+            <option value="active">Active only</option>
+            <option value="inactive">Inactive only</option>
+          </select>
+          <select class="form-control" id="ruleSeverityFilter">
+            <option value="">All severities</option>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+        </div>
+      </div>
+      <div id="ruleTableContainer"></div>
+    </div>
+  </section>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/ui.js"></script>
+  <script src="../js/table.js"></script>
+  <script src="../js/layout.js"></script>
+  <script src="../js/rules.js"></script>
+</body>
+</html>

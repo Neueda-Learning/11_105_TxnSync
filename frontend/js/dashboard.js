@@ -63,7 +63,7 @@ function renderStats({ transactions, accounts, rules, alerts }) {
   const totalAccounts = accounts.length;
   const institutions = new Set(accounts.map((a) => a.institutionName).filter(Boolean));
 
-  const activeRules = rules.filter((r) => r.isActive).length;
+  const activeRules = rules.filter((r) => r.active).length;
   const totalRules = rules.length;
 
   const openAlerts = alerts.filter((a) => (a.status || '').toUpperCase() === 'OPEN').length;
