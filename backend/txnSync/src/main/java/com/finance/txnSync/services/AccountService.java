@@ -3,6 +3,7 @@ package com.finance.txnSync.services;
 import com.finance.txnSync.models.Account;
 import com.finance.txnSync.repositories.AccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -25,7 +26,7 @@ public class AccountService {
     public Account getAccountById(String accountId) {
         try {
             return accountRepository.findById(accountId);
-        } catch (Exception e) {
+        } catch (EmptyResultDataAccessException e) {
             return null;
         }
     }
