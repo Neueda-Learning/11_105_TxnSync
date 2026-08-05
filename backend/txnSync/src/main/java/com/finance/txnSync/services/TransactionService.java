@@ -7,6 +7,7 @@ import com.finance.txnSync.repositories.AlertRepository;
 import com.finance.txnSync.repositories.RuleRepository;
 import com.finance.txnSync.repositories.TransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClientException;
@@ -59,7 +60,7 @@ public class TransactionService {
     public Transaction getTransactionById(Long id) {
         try {
             return transactionRepository.findById(id);
-        } catch (Exception e) {
+        } catch (EmptyResultDataAccessException e) {
             return null;
         }
     }

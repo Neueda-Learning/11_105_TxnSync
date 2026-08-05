@@ -3,6 +3,7 @@ package com.finance.txnSync.services;
 import com.finance.txnSync.models.Rule;
 import com.finance.txnSync.repositories.RuleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,7 +25,7 @@ public class RuleService {
     public Rule getRuleById(Long id) {
         try {
             return ruleRepository.findById(id);
-        } catch (Exception e) {
+        } catch (EmptyResultDataAccessException e) {
             return null;
         }
     }
