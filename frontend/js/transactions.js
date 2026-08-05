@@ -187,7 +187,7 @@ function newTxnFormHtml() {
         <div class="form-field">
           <label class="form-label" for="f-amount">Amount</label>
           <div class="input-affix">
-            <span class="affix">$</span>
+            <span class="affix" id="f-amount-affix">$</span>
             <input class="form-control" id="f-amount" type="number" min="0.01" step="0.01" placeholder="0.00" required />
           </div>
           <div class="form-error">Enter an amount greater than 0.</div>
@@ -261,6 +261,12 @@ function openNewTransactionModal() {
     onMount: (h) => {
       h.overlay.querySelector('[data-cancel]').addEventListener('click', h.close);
       h.overlay.querySelector('#submitTxnBtn').addEventListener('click', () => submitNewTransaction(h));
+
+      const currencySelect = h.overlay.querySelector('#f-currency');
+      const affixEl = h.overlay.querySelector('#f-amount-affix');
+      const updateAffix = () => { affixEl.textContent = TxnSyncUI.currencySymbol(currencySelect.value); };
+      currencySelect.addEventListener('change', updateAffix);
+      updateAffix();
     },
   });
 }

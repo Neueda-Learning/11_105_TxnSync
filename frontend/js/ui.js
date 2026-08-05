@@ -26,6 +26,15 @@ function formatCurrency(amount, currency = 'USD') {
   }
 }
 
+function currencySymbol(currencyCode) {
+  try {
+    const parts = new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode, currencyDisplay: 'narrowSymbol' }).formatToParts(0);
+    return parts.find((p) => p.type === 'currency')?.value || currencyCode;
+  } catch (e) {
+    return currencyCode;
+  }
+}
+
 function formatNumber(value) {
   if (value === null || value === undefined) return '—';
   return new Intl.NumberFormat('en-US').format(Number(value));
@@ -87,9 +96,14 @@ function debounce(fn, wait = 250) {
 
 /* ---------------- Badge helpers ---------------- */
 
+const TONE_HEX = {
+  primary: '#2f5bff', success: '#12875a', warning: '#b6720b',
+  danger: '#d3352f', info: '#1179a8', neutral: '#5a6478',
+};
+
 const BADGE_TONES = {
   txnStatus: { COMPLETED: 'success', PENDING: 'warning', FAILED: 'danger', REVERSED: 'neutral', CANCELLED: 'neutral' },
-  alertStatus: { OPEN: 'danger', ACKNOWLEDGED: 'warning', RESOLVED: 'success', DISMISSED: 'neutral' },
+  alertStatus: { OPEN: 'danger', ACKNOWLEDGED: 'warning', INVESTIGATING: 'info', CLOSED: 'success', DISMISSED: 'neutral' },
   severity: { LOW: 'info', MEDIUM: 'warning', HIGH: 'danger', CRITICAL: 'danger' },
 };
 
@@ -232,9 +246,36 @@ function renderBlockState(container, { icon = 'fa-inbox', title, desc = '', acti
   `;
 }
 
+/** Renders prev/1…N/next controls into a container — same look as DataTable's built-in pager, for layouts (like grouped card lists) that don't use DataTable. */
+function renderPager(container, { page, totalPages, onChange }) {
+  const btn = (label, p, opts = {}) => `<button class="page-btn ${opts.active ? 'active' : ''}" ${opts.disabled ? 'disabled' : ''} data-page="${p}">${label}</button>`;
+  let html = btn('<i class="fa-solid fa-angle-left"></i>', page - 1, { disabled: page === 1 });
+
+  const windowSize = 5;
+  let startPage = Math.max(1, page - Math.floor(windowSize / 2));
+  let endPage = Math.min(totalPages, startPage + windowSize - 1);
+  startPage = Math.max(1, endPage - windowSize + 1);
+
+  if (startPage > 1) {
+    html += btn('1', 1);
+    if (startPage > 2) html += `<span class="text-muted" style="padding:0 4px;">…</span>`;
+  }
+  for (let p = startPage; p <= endPage; p++) html += btn(String(p), p, { active: p === page });
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) html += `<span class="text-muted" style="padding:0 4px;">…</span>`;
+    html += btn(String(totalPages), totalPages);
+  }
+
+  html += btn('<i class="fa-solid fa-angle-right"></i>', page + 1, { disabled: page === totalPages });
+  container.innerHTML = html;
+  container.querySelectorAll('.page-btn:not(:disabled)').forEach((b) => {
+    b.addEventListener('click', () => onChange(Number(b.dataset.page)));
+  });
+}
+
 window.TxnSyncUI = {
-  escapeHtml, formatCurrency, formatNumber, formatDate, formatDateTime, formatRelativeTime,
-  titleCase, debounce, statusBadge, badgeHtml, toneFor,
+  escapeHtml, formatCurrency, currencySymbol, formatNumber, formatDate, formatDateTime, formatRelativeTime,
+  titleCase, debounce, statusBadge, badgeHtml, toneFor, TONE_HEX,
   Toast, openModal,
-  renderSkeletonRows, renderTableMessageRow, renderBlockState,
+  renderSkeletonRows, renderTableMessageRow, renderBlockState, renderPager,
 };

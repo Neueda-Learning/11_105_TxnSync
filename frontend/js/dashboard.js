@@ -5,10 +5,7 @@
  * client-side from the full collections the backend returns.
  */
 
-const TONE_HEX = {
-  primary: '#2f5bff', success: '#12875a', warning: '#b6720b',
-  danger: '#d3352f', info: '#1179a8', neutral: '#5a6478',
-};
+const TONE_HEX = TxnSyncUI.TONE_HEX;
 
 function withinLastHours(isoDate, hours) {
   const d = new Date(isoDate);
@@ -68,7 +65,8 @@ function renderStats({ transactions, accounts, rules, alerts }) {
 
   const openAlerts = alerts.filter((a) => (a.status || '').toUpperCase() === 'OPEN').length;
   const ackAlerts = alerts.filter((a) => (a.status || '').toUpperCase() === 'ACKNOWLEDGED').length;
-  const resolvedAlerts = alerts.filter((a) => (a.status || '').toUpperCase() === 'RESOLVED').length;
+  const investigatingAlerts = alerts.filter((a) => (a.status || '').toUpperCase() === 'INVESTIGATING').length;
+  const closedAlerts = alerts.filter((a) => (a.status || '').toUpperCase() === 'CLOSED').length;
 
   grid.innerHTML = [
     statCardHtml({
@@ -94,7 +92,7 @@ function renderStats({ transactions, accounts, rules, alerts }) {
     statCardHtml({
       icon: 'fa-triangle-exclamation', tone: 'danger',
       value: TxnSyncUI.formatNumber(openAlerts),
-      label: `${ackAlerts} acknowledged · ${resolvedAlerts} resolved`,
+      label: `${ackAlerts} acknowledged · ${investigatingAlerts} investigating · ${closedAlerts} closed`,
       trend: openAlerts > 0
         ? { tone: 'down', icon: 'fa-arrow-up', text: 'Needs review' }
         : { tone: 'up', icon: 'fa-check', text: 'All clear' },

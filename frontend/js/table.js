@@ -78,6 +78,13 @@ class DataTable {
     });
   }
 
+  /** Swaps the column set (e.g. to hide a column that's null across every row) and re-renders. */
+  setColumns(columns) {
+    this.opts.columns = columns;
+    this._buildHead();
+    this._renderBody();
+  }
+
   setLoading() {
     this.status = 'loading';
     this._renderBody();

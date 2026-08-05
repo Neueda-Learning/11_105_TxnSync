@@ -16,8 +16,8 @@
   <section class="card">
     <div class="card-header">
       <div class="card-header-titles">
-        <h2>All Alerts</h2>
-        <p>Triage and resolve alerts raised by the rule engine</p>
+        <h2>Alerts by Transaction</h2>
+        <p>Alerts are grouped by the transaction that triggered them, since one transaction can trip more than one rule at once</p>
       </div>
     </div>
     <div class="card-body">
@@ -31,7 +31,8 @@
             <option value="">All statuses</option>
             <option value="OPEN">Open</option>
             <option value="ACKNOWLEDGED">Acknowledged</option>
-            <option value="RESOLVED">Resolved</option>
+            <option value="INVESTIGATING">Investigating</option>
+            <option value="CLOSED">Closed</option>
             <option value="DISMISSED">Dismissed</option>
           </select>
           <select class="form-control" id="alertSeverityFilter">
@@ -41,15 +42,23 @@
             <option value="HIGH">High</option>
             <option value="CRITICAL">Critical</option>
           </select>
+          <select class="form-control" id="alertSortBy">
+            <option value="recent">Most Recent</option>
+            <option value="severity">Highest Severity</option>
+            <option value="count">Most Alerts</option>
+          </select>
         </div>
       </div>
-      <div id="alertTableContainer"></div>
+      <div id="alertGroupsContainer" class="txn-group-list"></div>
+      <div class="pagination">
+        <div class="pagination-info" id="alertsPaginationInfo"></div>
+        <div class="pagination-controls" id="alertsPaginationControls"></div>
+      </div>
     </div>
   </section>
 
   <script src="../js/api.js"></script>
   <script src="../js/ui.js"></script>
-  <script src="../js/table.js"></script>
   <script src="../js/layout.js"></script>
   <script src="../js/alerts.js"></script>
 </body>

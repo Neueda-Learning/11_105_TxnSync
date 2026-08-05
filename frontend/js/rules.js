@@ -19,8 +19,13 @@ function buildRuleFilterFn() {
   };
 }
 
-function ruleColumns() {
-  return [
+/**
+ * Threshold and Window/Count only apply to some rule types (AMOUNT/DAILY_LIMIT
+ * vs. VELOCITY), so either column is dropped entirely — not just blanked per
+ * row — whenever every currently loaded rule has null for it.
+ */
+function ruleColumns({ showThreshold = true, showWindowCount = true } = {}) {
+  const columns = [
     {
       key: 'ruleName', label: 'Rule', sortable: true, sortValue: (r) => r.ruleName || '',
       render: (r) => `
@@ -29,17 +34,26 @@ function ruleColumns() {
       `,
     },
     { key: 'severity', label: 'Severity', sortable: true, sortValue: (r) => r.severity || '', render: (r) => TxnSyncUI.statusBadge('severity', r.severity) },
-    {
+  ];
+
+  if (showThreshold) {
+    columns.push({
       key: 'thresholdAmount', label: 'Threshold', sortable: true, sortValue: (r) => Number(r.thresholdAmount) || 0,
       render: (r) => r.thresholdAmount != null ? TxnSyncUI.formatCurrency(r.thresholdAmount, 'USD') : '<span class="text-muted">—</span>',
-    },
-    {
+    });
+  }
+
+  if (showWindowCount) {
+    columns.push({
       key: 'window', label: 'Window / Count',
       render: (r) => {
         if (r.timeWindowMinutes == null && r.transactionCount == null) return '<span class="text-muted">—</span>';
         return `${r.timeWindowMinutes != null ? r.timeWindowMinutes + ' min' : '—'} / ${r.transactionCount != null ? r.transactionCount + ' txns' : '—'}`;
       },
-    },
+    });
+  }
+
+  columns.push(
     {
       key: 'active', label: 'Active', sortable: true, sortValue: (r) => (r.active ? 1 : 0),
       render: (r) => `
@@ -57,7 +71,16 @@ function ruleColumns() {
         </div>
       `,
     },
-  ];
+  );
+
+  return columns;
+}
+
+/** Recomputes which optional columns should show, based on the full loaded rule set. */
+function visibleRuleColumns(rules) {
+  const showThreshold = rules.some((r) => r.thresholdAmount !== null && r.thresholdAmount !== undefined);
+  const showWindowCount = rules.some((r) => r.timeWindowMinutes !== null && r.timeWindowMinutes !== undefined || r.transactionCount !== null && r.transactionCount !== undefined);
+  return ruleColumns({ showThreshold, showWindowCount });
 }
 
 function initTable() {
@@ -96,6 +119,7 @@ async function loadRules() {
   try {
     const rules = await TxnSyncApi.RulesApi.list(false);
     allRules = rules;
+    ruleTable.setColumns(visibleRuleColumns(rules));
     ruleTable.setData(rules);
   } catch (err) {
     ruleTable.setError(err.message, loadRules);
