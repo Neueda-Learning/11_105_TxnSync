@@ -62,6 +62,9 @@ function initLayout() {
           </div>
           <div class="header-right">
             <div class="header-clock" id="headerClock"></div>
+            <button class="header-icon-btn" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+              <i class="fa-solid fa-moon"></i>
+            </button>
             <a class="header-icon-btn" href="${root}pages/alerts.html" title="Open alerts" id="headerBell">
               <i class="fa-solid fa-bell"></i>
               <span class="ping" id="headerBellPing" style="display:none;"></span>
@@ -88,6 +91,26 @@ function initLayout() {
   wireClock();
   wireConnectivity();
   wireAlertBadge();
+  wireThemeToggle();
+}
+
+const THEME_KEY = 'txnsync-theme';
+
+function wireThemeToggle() {
+  const btn = document.getElementById('themeToggle');
+  const icon = btn.querySelector('i');
+
+  const applyIcon = (theme) => {
+    icon.className = theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  };
+  applyIcon(document.documentElement.getAttribute('data-theme') || 'light');
+
+  btn.addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem(THEME_KEY, next);
+    applyIcon(next);
+  });
 }
 
 function wireMobileNav() {

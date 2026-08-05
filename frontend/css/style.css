@@ -72,6 +72,51 @@
   --transition-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ---------- Dark theme ---------- */
+:root[data-theme='dark'] {
+  --color-bg: #0b0f1a;
+  --color-surface: #131a2b;
+  --color-surface-alt: #1a2337;
+
+  --color-sidebar: #0e1327;
+  --color-sidebar-alt: #1a2242;
+  --color-sidebar-border: #2b3766;
+
+  --color-border: #253052;
+  --color-border-strong: #38456e;
+
+  --color-text-primary: #e8ecf7;
+  --color-text-secondary: #9aa5c4;
+  --color-text-muted: #6b7597;
+
+  --color-primary: #5b82ff;
+  --color-primary-hover: #7a99ff;
+  --color-primary-light: #1a2650;
+  --color-primary-dark: #c2d0ff;
+
+  --color-success: #34d399;
+  --color-success-light: #113226;
+  --color-danger: #f87171;
+  --color-danger-light: #3a1817;
+  --color-warning: #fbbf5c;
+  --color-warning-light: #3a2a0e;
+  --color-info: #4fc3f7;
+  --color-info-light: #10293a;
+  --color-neutral: #9aa5c4;
+  --color-neutral-light: #1e2740;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.32), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.36), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.46), 0 4px 10px rgba(0, 0, 0, 0.26);
+}
+:root[data-theme='dark'] ::-webkit-scrollbar-thumb { background: #38456e; }
+:root[data-theme='dark'] ::-webkit-scrollbar-thumb:hover { background: #4a5987; }
+:root[data-theme='dark'] ::selection { background: var(--color-primary-light); color: var(--color-primary-dark); }
+:root[data-theme='dark'] .sidebar-overlay { background: rgba(0, 0, 0, 0.6); }
+:root[data-theme='dark'] .modal-overlay { background: rgba(0, 0, 0, 0.6); }
+:root[data-theme='dark'] .switch-track::after { background: #e8ecf7; }
+
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -84,6 +129,10 @@ body {
   background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  transition: background-color var(--transition-base), color var(--transition-base);
+}
+.card, .app-header {
+  transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base);
 }
 h1, h2, h3, h4, h5, h6 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
 p { margin: 0; }
