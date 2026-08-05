@@ -5,7 +5,7 @@
  * client-side from the full collections the backend returns.
  */
 
-const TONE_HEX = TxnSyncUI.TONE_HEX;
+// Reuse shared tone palette from TxnSyncUI to avoid redeclaring global `TONE_HEX`.
 
 function withinLastHours(isoDate, hours) {
   const d = new Date(isoDate);
@@ -143,10 +143,10 @@ function renderStatusBreakdown(transactions) {
     return `
       <div class="breakdown-row">
         <div class="breakdown-row-top">
-          <span class="label"><span class="dot" style="background:${TONE_HEX[tone]}"></span>${TxnSyncUI.titleCase(status)}</span>
+          <span class="label"><span class="dot" style="background:${TxnSyncUI.TONE_HEX[tone]}"></span>${TxnSyncUI.titleCase(status)}</span>
           <span class="value">${count} · ${pct}%</span>
         </div>
-        <div class="breakdown-track"><div class="breakdown-fill" style="width:${pct}%; background:${TONE_HEX[tone]}"></div></div>
+        <div class="breakdown-track"><div class="breakdown-fill" style="width:${pct}%; background:${TxnSyncUI.TONE_HEX[tone]}"></div></div>
       </div>
     `;
   }).join('');
@@ -217,7 +217,7 @@ function renderRecentAlerts({ alerts, rules, transactions }) {
     const tone = TxnSyncUI.toneFor('severity', severity);
     return `
       <div class="feed-row">
-        <div class="feed-icon" style="background:${TONE_HEX[tone]}22; color:${TONE_HEX[tone]};">
+        <div class="feed-icon" style="background:${TxnSyncUI.TONE_HEX[tone]}22; color:${TxnSyncUI.TONE_HEX[tone]};">
           <i class="fa-solid fa-triangle-exclamation"></i>
         </div>
         <div class="feed-body">
