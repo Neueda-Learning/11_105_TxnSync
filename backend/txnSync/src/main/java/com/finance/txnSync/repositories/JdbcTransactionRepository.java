@@ -78,4 +78,12 @@ public class JdbcTransactionRepository implements TransactionRepository {
     public Transaction findById(Long id) {
         return jdbcTemplate.queryForObject("SELECT * FROM transactions WHERE id = ?", rowMapper, id);
     }
+
+    @Override
+    public long countPreviousTransactions(String accountId, String payeeId, LocalDateTime beforeTimestamp) {
+        String sql = "SELECT COUNT(*) FROM transactions WHERE account_id = ? AND payee_id = ? AND timestamp < ?";
+        Timestamp ts = beforeTimestamp != null ? Timestamp.valueOf(beforeTimestamp) : Timestamp.valueOf(LocalDateTime.now());
+        Long count = jdbcTemplate.queryForObject(sql, new Object[]{accountId, payeeId, ts}, Long.class);
+        return count != null ? count : 0L;
+    }
 }
