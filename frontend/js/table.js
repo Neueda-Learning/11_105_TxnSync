@@ -55,15 +55,16 @@ class DataTable {
     this.theadRow.innerHTML = this.opts.columns.map((col) => {
       const active = this.sortKey === col.key;
       const icon = active ? (this.sortDir === 'asc' ? 'fa-arrow-up' : 'fa-arrow-down') : 'fa-sort';
+      const ariaSort = active ? (this.sortDir === 'asc' ? 'ascending' : 'descending') : 'none';
       return `
-        <th data-key="${col.key}" class="${col.sortable ? 'sortable' : ''} ${active ? 'sort-active' : ''}" style="${col.align ? `text-align:${col.align}` : ''}">
+        <th scope="col" data-key="${col.key}" class="${col.sortable ? 'sortable' : ''} ${active ? 'sort-active' : ''}" style="${col.align ? `text-align:${col.align}` : ''}" ${col.sortable ? `tabindex="0" role="button" aria-sort="${ariaSort}"` : ''}>
           ${TxnSyncUI.escapeHtml(col.label)}${col.sortable ? `<i class="fa-solid ${icon} sort-icon"></i>` : ''}
         </th>
       `;
     }).join('');
 
     this.theadRow.querySelectorAll('th.sortable').forEach((th) => {
-      th.addEventListener('click', () => {
+      const sort = () => {
         const key = th.dataset.key;
         if (this.sortKey === key) {
           this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
@@ -74,6 +75,10 @@ class DataTable {
         this._buildHead();
         this.page = 1;
         this._renderBody();
+      };
+      th.addEventListener('click', sort);
+      th.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sort(); }
       });
     });
   }

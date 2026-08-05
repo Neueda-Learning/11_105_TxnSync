@@ -24,6 +24,7 @@ function initLayout() {
   const subtitle = body.dataset.subtitle || '';
 
   document.body.insertAdjacentHTML('afterbegin', `
+    <a class="skip-link" href="#pageContent">Skip to main content</a>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <div class="app-shell">
       <aside class="sidebar" id="sidebar">
@@ -52,29 +53,52 @@ function initLayout() {
       <div class="main-column">
         <header class="app-header">
           <div class="header-left">
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation">
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar">
               <i class="fa-solid fa-bars"></i>
             </button>
             <div class="header-titles">
-              <div class="header-title">${TxnSyncUI.escapeHtml(title)}</div>
+              <h1 class="header-title">${TxnSyncUI.escapeHtml(title)}</h1>
               ${subtitle ? `<div class="header-subtitle">${TxnSyncUI.escapeHtml(subtitle)}</div>` : ''}
             </div>
           </div>
           <div class="header-right">
-            <div class="header-clock" id="headerClock"></div>
+            <div class="header-clock" id="headerClock" aria-hidden="true"></div>
+            <div class="a11y-menu">
+              <button class="header-icon-btn" id="a11yToggle" title="Accessibility options" aria-label="Accessibility options" aria-haspopup="true" aria-expanded="false" aria-controls="a11yPanel">
+                <i class="fa-solid fa-universal-access"></i>
+              </button>
+              <div class="a11y-panel" id="a11yPanel" role="menu" aria-label="Accessibility options" hidden>
+                <div class="a11y-panel-label" id="a11yFontLabel">Text size</div>
+                <div class="a11y-seg" role="radiogroup" aria-labelledby="a11yFontLabel">
+                  <button type="button" class="a11y-seg-btn" data-font-size="normal" role="radio" aria-checked="true">A</button>
+                  <button type="button" class="a11y-seg-btn" data-font-size="lg" role="radio" aria-checked="false">A+</button>
+                  <button type="button" class="a11y-seg-btn" data-font-size="xl" role="radio" aria-checked="false">A++</button>
+                </div>
+                <label class="switch a11y-panel-row" role="menuitemcheckbox">
+                  <input type="checkbox" id="a11yContrastToggle" />
+                  <span class="switch-track"></span>
+                  <span>High contrast</span>
+                </label>
+                <label class="switch a11y-panel-row" role="menuitemcheckbox">
+                  <input type="checkbox" id="a11yMotionToggle" />
+                  <span class="switch-track"></span>
+                  <span>Reduce motion</span>
+                </label>
+              </div>
+            </div>
             <button class="header-icon-btn" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
               <i class="fa-solid fa-moon"></i>
             </button>
-            <a class="header-icon-btn" href="${root}pages/alerts.html" title="Open alerts" id="headerBell">
+            <a class="header-icon-btn" href="${root}pages/alerts.html" title="Open alerts" id="headerBell" aria-label="Open alerts">
               <i class="fa-solid fa-bell"></i>
               <span class="ping" id="headerBellPing" style="display:none;"></span>
             </a>
-            <div class="header-avatar" title="Operations">
+            <div class="header-avatar" title="Operations" role="img" aria-label="Operations user">
               <i class="fa-solid fa-user-shield"></i>
             </div>
           </div>
         </header>
-        <main class="page-content" id="pageContent"></main>
+        <main class="page-content" id="pageContent" tabindex="-1"></main>
       </div>
     </div>
   `);
@@ -92,6 +116,7 @@ function initLayout() {
   wireConnectivity();
   wireAlertBadge();
   wireThemeToggle();
+  wireA11yPanel();
 }
 
 const THEME_KEY = 'txnsync-theme';
@@ -113,12 +138,79 @@ function wireThemeToggle() {
   });
 }
 
+const FONT_SIZE_KEY = 'txnsync-font-size';
+const CONTRAST_KEY = 'txnsync-contrast';
+const MOTION_KEY = 'txnsync-motion';
+
+function wireA11yPanel() {
+  const root = document.documentElement;
+  const toggle = document.getElementById('a11yToggle');
+  const panel = document.getElementById('a11yPanel');
+  const fontBtns = Array.from(panel.querySelectorAll('.a11y-seg-btn'));
+  const contrastInput = document.getElementById('a11yContrastToggle');
+  const motionInput = document.getElementById('a11yMotionToggle');
+
+  const closePanel = () => {
+    panel.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+  };
+  const openPanel = () => {
+    panel.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+    (fontBtns.find((b) => b.getAttribute('aria-checked') === 'true') || fontBtns[0]).focus();
+  };
+
+  toggle.addEventListener('click', () => (panel.hidden ? openPanel() : closePanel()));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) { closePanel(); toggle.focus(); }
+  });
+  document.addEventListener('click', (e) => {
+    if (!panel.hidden && !panel.contains(e.target) && e.target !== toggle) closePanel();
+  });
+
+  const applyFontSize = (size) => {
+    if (size === 'normal') root.removeAttribute('data-font-size');
+    else root.setAttribute('data-font-size', size);
+    fontBtns.forEach((b) => b.setAttribute('aria-checked', String(b.dataset.fontSize === size)));
+  };
+  fontBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const size = btn.dataset.fontSize;
+      applyFontSize(size);
+      localStorage.setItem(FONT_SIZE_KEY, size);
+    });
+  });
+  applyFontSize(localStorage.getItem(FONT_SIZE_KEY) || 'normal');
+
+  const applyContrast = (on) => {
+    if (on) root.setAttribute('data-contrast', 'high');
+    else root.removeAttribute('data-contrast');
+    contrastInput.checked = on;
+  };
+  contrastInput.addEventListener('change', () => {
+    applyContrast(contrastInput.checked);
+    localStorage.setItem(CONTRAST_KEY, String(contrastInput.checked));
+  });
+  applyContrast(localStorage.getItem(CONTRAST_KEY) === 'true');
+
+  const applyMotion = (on) => {
+    if (on) root.setAttribute('data-reduced-motion', 'true');
+    else root.removeAttribute('data-reduced-motion');
+    motionInput.checked = on;
+  };
+  motionInput.addEventListener('change', () => {
+    applyMotion(motionInput.checked);
+    localStorage.setItem(MOTION_KEY, String(motionInput.checked));
+  });
+  applyMotion(localStorage.getItem(MOTION_KEY) === 'true');
+}
+
 function wireMobileNav() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebarOverlay');
   const toggle = document.getElementById('sidebarToggle');
-  const open = () => { sidebar.classList.add('open'); overlay.classList.add('visible'); };
-  const close = () => { sidebar.classList.remove('open'); overlay.classList.remove('visible'); };
+  const open = () => { sidebar.classList.add('open'); overlay.classList.add('visible'); toggle.setAttribute('aria-expanded', 'true'); };
+  const close = () => { sidebar.classList.remove('open'); overlay.classList.remove('visible'); toggle.setAttribute('aria-expanded', 'false'); };
   toggle.addEventListener('click', () => sidebar.classList.contains('open') ? close() : open());
   overlay.addEventListener('click', close);
   sidebar.querySelectorAll('.sidebar-link').forEach((link) => link.addEventListener('click', close));

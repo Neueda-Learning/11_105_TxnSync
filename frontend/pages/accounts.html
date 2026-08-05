@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script>(function(){var t=localStorage.getItem('txnsync-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();</script>
+  <script>(function(){var d=document.documentElement;var t=localStorage.getItem('txnsync-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');d.setAttribute('data-theme',t);var fs=localStorage.getItem('txnsync-font-size');if(fs)d.setAttribute('data-font-size',fs);if(localStorage.getItem('txnsync-contrast')==='true')d.setAttribute('data-contrast','high');if(localStorage.getItem('txnsync-motion')==='true')d.setAttribute('data-reduced-motion','true');})();</script>
   <title>Accounts · TxnSync</title>
   <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
