@@ -5,10 +5,7 @@
  * client-side from the full collections the backend returns.
  */
 
-const TONE_HEX = {
-  primary: '#2f5bff', success: '#12875a', warning: '#b6720b',
-  danger: '#d3352f', info: '#1179a8', neutral: '#5a6478',
-};
+const TONE_HEX = TxnSyncUI.TONE_HEX;
 
 function withinLastHours(isoDate, hours) {
   const d = new Date(isoDate);

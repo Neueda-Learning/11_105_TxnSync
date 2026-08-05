@@ -1,104 +1,193 @@
 /**
- * Alerts page — table (search/filter/sort/pagination) joined with rule and
- * transaction data, a detail modal, and the acknowledge/resolve/dismiss
- * workflow wired to PATCH /api/v1/alerts/{id}/status.
+ * Alerts page — alerts grouped by the transaction that triggered them (a
+ * single transaction can trip more than one active rule at once, e.g. a
+ * large transfer to an unseen payee trips both the AMOUNT and NEW_PAYEE
+ * rules), with search/filter/sort/pagination over the resulting groups,
+ * a detail modal per alert, and the acknowledge/resolve/dismiss workflow
+ * wired to PATCH /api/v1/alerts/{id}/status.
+ *
+ * This uses a hand-rolled card-list renderer rather than the shared
+ * DataTable, since DataTable is row-per-record and has no concept of
+ * grouping several alerts under one shared transaction header.
  */
 
-let alertTable = null;
+const SEVERITY_RANK = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
+const ALERT_PAGE_SIZE = 6;
+
 let allAlerts = [];
-let allRulesForAlerts = [];
-let allTxnsForAlerts = [];
 let rulesById = new Map();
 let txnsById = new Map();
-const ALERT_FILTERS = { status: '', severity: '' };
+let loadState = 'loading'; // loading | error | ready
+let loadError = null;
+let alertsPage = 1;
+
+const ALERT_FILTERS = { status: '', severity: '', search: '', sortBy: 'recent' };
 
 function severityOf(alert) {
-  return rulesById.get(alert.ruleId)?.severity || 'MEDIUM';
+  return (rulesById.get(alert.ruleId)?.severity || 'MEDIUM').toUpperCase();
 }
 
-function buildAlertFilterFn() {
-  return (row) => {
-    if (ALERT_FILTERS.status && (row.status || '').toUpperCase() !== ALERT_FILTERS.status) return false;
-    if (ALERT_FILTERS.severity && severityOf(row).toUpperCase() !== ALERT_FILTERS.severity) return false;
-    return true;
-  };
+function alertMatches(alert, term) {
+  const rule = rulesById.get(alert.ruleId);
+  const txn = txnsById.get(alert.transactionId);
+  if (ALERT_FILTERS.status && (alert.status || '').toUpperCase() !== ALERT_FILTERS.status) return false;
+  if (ALERT_FILTERS.severity && severityOf(alert) !== ALERT_FILTERS.severity) return false;
+  if (term) {
+    const haystack = [
+      alert.id, alert.status, alert.resolutionNotes, rule?.ruleName, rule?.ruleType,
+      txn?.payeeId, txn?.accountId, txn?.description, alert.transactionId, alert.ruleId,
+    ].filter((v) => v !== null && v !== undefined).join(' ').toLowerCase();
+    if (!haystack.includes(term)) return false;
+  }
+  return true;
 }
 
-function alertSearchMatch(row, term) {
-  const rule = rulesById.get(row.ruleId);
-  const txn = txnsById.get(row.transactionId);
-  const haystack = [
-    row.id, row.status, row.resolutionNotes, rule?.ruleName, rule?.ruleType,
-    txn?.payeeId, txn?.accountId, txn?.description, row.transactionId, row.ruleId,
-  ].filter((v) => v !== null && v !== undefined).join(' ').toLowerCase();
-  return haystack.includes(term);
+/** Groups by transactionId; a group is included if any of its alerts pass the active filters, and — for full context — shows every alert it has, not just the matching ones. */
+function computeGroups() {
+  const term = ALERT_FILTERS.search;
+  const byTxn = new Map();
+  allAlerts.forEach((alert) => {
+    if (!byTxn.has(alert.transactionId)) byTxn.set(alert.transactionId, []);
+    byTxn.get(alert.transactionId).push(alert);
+  });
+
+  let groups = [...byTxn.entries()]
+    .map(([transactionId, alerts]) => ({
+      transactionId,
+      txn: txnsById.get(transactionId),
+      alerts: alerts.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+    }))
+    .filter((g) => g.alerts.some((a) => alertMatches(a, term)));
+
+  const latestOf = (g) => Math.max(...g.alerts.map((a) => new Date(a.createdAt).getTime() || 0));
+  const maxSeverityOf = (g) => Math.max(...g.alerts.map((a) => SEVERITY_RANK[severityOf(a)] || 0));
+
+  groups.sort((a, b) => {
+    if (ALERT_FILTERS.sortBy === 'severity') return maxSeverityOf(b) - maxSeverityOf(a) || latestOf(b) - latestOf(a);
+    if (ALERT_FILTERS.sortBy === 'count') return b.alerts.length - a.alerts.length || latestOf(b) - latestOf(a);
+    return latestOf(b) - latestOf(a);
+  });
+
+  return groups;
 }
 
-function alertColumns() {
-  return [
-    {
-      key: 'rule', label: 'Rule', sortable: true, sortValue: (r) => rulesById.get(r.ruleId)?.ruleName || '',
-      render: (r) => {
-        const rule = rulesById.get(r.ruleId);
-        return `
-          <div class="cell-primary">${TxnSyncUI.escapeHtml(rule?.ruleName || `Rule #${r.ruleId}`)}</div>
-          <div class="cell-secondary">${TxnSyncUI.escapeHtml(rule?.ruleType || '')}</div>
-        `;
-      },
-    },
-    {
-      key: 'severity', label: 'Severity', sortable: true, sortValue: (r) => severityOf(r),
-      render: (r) => TxnSyncUI.statusBadge('severity', severityOf(r)),
-    },
-    {
-      key: 'transaction', label: 'Transaction',
-      render: (r) => {
-        const txn = txnsById.get(r.transactionId);
-        if (!txn) return `<span class="cell-mono">#${r.transactionId}</span>`;
-        return `
-          <div class="cell-mono cell-primary">#${txn.id} · ${TxnSyncUI.formatCurrency(txn.amount, txn.currency)}</div>
-          <div class="cell-secondary">${TxnSyncUI.escapeHtml(txn.accountId)} → ${TxnSyncUI.escapeHtml(txn.payeeId)}</div>
-        `;
-      },
-    },
-    { key: 'status', label: 'Status', sortable: true, sortValue: (r) => r.status || '', render: (r) => TxnSyncUI.statusBadge('alertStatus', r.status) },
-    {
-      key: 'createdAt', label: 'Raised', sortable: true, sortValue: (r) => new Date(r.createdAt).getTime() || 0,
-      render: (r) => `
-        <div>${TxnSyncUI.formatDate(r.createdAt)}</div>
-        <div class="cell-secondary">${TxnSyncUI.formatRelativeTime(r.createdAt)}</div>
-      `,
-    },
-    {
-      key: 'actions', label: '', align: 'right',
-      render: (r) => (r.status || '').toUpperCase() === 'OPEN'
-        ? `<div class="cell-actions" data-stop-row-click><button class="btn btn-success btn-sm" data-quick-ack="${r.id}"><i class="fa-solid fa-check"></i> Acknowledge</button></div>`
-        : '',
-    },
-  ];
+function renderAlertRowHtml(alert) {
+  const rule = rulesById.get(alert.ruleId);
+  const severity = severityOf(alert);
+  const tone = TxnSyncUI.toneFor('severity', severity);
+  const color = TxnSyncUI.TONE_HEX[tone];
+  return `
+    <div class="txn-alert-row" data-alert-id="${alert.id}">
+      <div class="alert-icon" style="background:${color}22; color:${color};"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div class="alert-body">
+        <div class="alert-title">${TxnSyncUI.escapeHtml(rule?.ruleName || `Rule #${alert.ruleId}`)}</div>
+        <div class="alert-sub">${TxnSyncUI.formatRelativeTime(alert.createdAt)}${alert.resolutionNotes ? ' · ' + TxnSyncUI.escapeHtml(alert.resolutionNotes) : ''}</div>
+      </div>
+      <div class="alert-side">
+        ${TxnSyncUI.statusBadge('severity', severity)}
+        ${TxnSyncUI.statusBadge('alertStatus', alert.status)}
+        ${(alert.status || '').toUpperCase() === 'OPEN' ? `<button class="btn btn-success btn-sm btn-icon" data-quick-ack="${alert.id}" data-stop-row-click title="Acknowledge"><i class="fa-solid fa-check"></i></button>` : ''}
+      </div>
+    </div>
+  `;
 }
 
-function initTable() {
-  alertTable = new DataTable(document.getElementById('alertTableContainer'), {
-    columns: alertColumns(),
-    pageSize: 10,
-    defaultSortKey: 'createdAt',
-    defaultSortDir: 'desc',
-    rowKey: (r) => r.id,
-    onRowClick: (row) => openAlertDetailModal(row),
-    searchMatch: alertSearchMatch,
-    emptyState: {
+function renderGroupHtml(group) {
+  const { txn, alerts, transactionId } = group;
+  const txnLabel = txn
+    ? `
+      <div class="cell-mono cell-primary">#${txn.id} · ${TxnSyncUI.formatCurrency(txn.amount, txn.currency)}</div>
+      <div class="cell-secondary">${TxnSyncUI.escapeHtml(txn.accountId)} → ${TxnSyncUI.escapeHtml(txn.payeeId)} · ${TxnSyncUI.formatRelativeTime(txn.timestamp)}</div>
+    `
+    : `<div class="cell-primary cell-mono">Transaction #${transactionId}</div>`;
+
+  return `
+    <div class="txn-group">
+      <div class="txn-group-header">
+        <div class="txn-summary">${txnLabel}</div>
+        <span class="badge badge-primary badge-plain txn-group-count">${alerts.length} alert${alerts.length === 1 ? '' : 's'}</span>
+      </div>
+      <div class="txn-group-alerts">
+        ${alerts.map(renderAlertRowHtml).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderSkeletonGroups() {
+  const container = document.getElementById('alertGroupsContainer');
+  container.innerHTML = Array.from({ length: 3 }).map(() => `
+    <div class="txn-group">
+      <div class="txn-group-header">
+        <div class="skeleton skeleton-line" style="width:220px;height:16px;"></div>
+        <div class="skeleton" style="width:70px;height:20px;border-radius:999px;"></div>
+      </div>
+      <div style="padding: var(--space-3) var(--space-5);">
+        <div class="skeleton skeleton-line" style="width:60%;height:14px;"></div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('alertsPaginationInfo').textContent = '';
+  document.getElementById('alertsPaginationControls').innerHTML = '';
+}
+
+function renderAlertGroups() {
+  const container = document.getElementById('alertGroupsContainer');
+  const paginationInfo = document.getElementById('alertsPaginationInfo');
+  const paginationControls = document.getElementById('alertsPaginationControls');
+
+  if (loadState === 'loading') { renderSkeletonGroups(); return; }
+
+  if (loadState === 'error') {
+    TxnSyncUI.renderBlockState(container, {
+      icon: 'fa-triangle-exclamation', danger: true,
+      title: 'Could not load alerts',
+      desc: loadError || 'Something went wrong.',
+      actionHtml: '<button class="btn btn-secondary btn-sm" id="alertsRetryBtn"><i class="fa-solid fa-rotate-right"></i> Retry</button>',
+    });
+    document.getElementById('alertsRetryBtn')?.addEventListener('click', loadAlerts);
+    paginationInfo.textContent = '';
+    paginationControls.innerHTML = '';
+    return;
+  }
+
+  const groups = computeGroups();
+  if (groups.length === 0) {
+    TxnSyncUI.renderBlockState(container, {
       icon: 'fa-shield-check', title: 'No alerts found',
       desc: 'Try adjusting your search or filters.',
-    },
+    });
+    paginationInfo.textContent = '';
+    paginationControls.innerHTML = '';
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(groups.length / ALERT_PAGE_SIZE));
+  if (alertsPage > totalPages) alertsPage = totalPages;
+  const start = (alertsPage - 1) * ALERT_PAGE_SIZE;
+  const pageGroups = groups.slice(start, start + ALERT_PAGE_SIZE);
+
+  container.innerHTML = pageGroups.map(renderGroupHtml).join('');
+  const totalAlerts = groups.reduce((sum, g) => sum + g.alerts.length, 0);
+  paginationInfo.textContent = `Showing ${start + 1}–${Math.min(start + ALERT_PAGE_SIZE, groups.length)} of ${groups.length} transaction${groups.length === 1 ? '' : 's'} (${totalAlerts} alert${totalAlerts === 1 ? '' : 's'})`;
+  TxnSyncUI.renderPager(paginationControls, {
+    page: alertsPage, totalPages,
+    onChange: (p) => { alertsPage = p; renderAlertGroups(); },
   });
-  alertTable.setLoading();
 }
 
-function wireRowControls() {
-  document.getElementById('alertTableContainer').addEventListener('click', (e) => {
+function wireGroupControls() {
+  document.getElementById('alertGroupsContainer').addEventListener('click', (e) => {
     const ackBtn = e.target.closest('[data-quick-ack]');
-    if (ackBtn) quickAcknowledge(Number(ackBtn.dataset.quickAck));
+    if (ackBtn) {
+      quickAcknowledge(Number(ackBtn.dataset.quickAck));
+      return;
+    }
+    const row = e.target.closest('[data-alert-id]');
+    if (row) {
+      const alert = allAlerts.find((a) => a.id === Number(row.dataset.alertId));
+      if (alert) openAlertDetailModal(alert);
+    }
   });
 }
 
@@ -107,7 +196,7 @@ async function quickAcknowledge(id) {
     await TxnSyncApi.AlertsApi.updateStatus(id, 'ACKNOWLEDGED', null);
     const alert = allAlerts.find((a) => a.id === id);
     if (alert) alert.status = 'ACKNOWLEDGED';
-    alertTable.setData(allAlerts);
+    renderAlertGroups();
     TxnSyncUI.Toast.success(`Alert #${id} acknowledged`);
   } catch (err) {
     TxnSyncUI.Toast.error('Could not acknowledge alert', err.message);
@@ -115,7 +204,8 @@ async function quickAcknowledge(id) {
 }
 
 async function loadAlerts() {
-  alertTable?.setLoading();
+  loadState = 'loading';
+  renderAlertGroups();
   try {
     const [alerts, rules, transactions] = await Promise.all([
       TxnSyncApi.AlertsApi.list(),
@@ -123,13 +213,14 @@ async function loadAlerts() {
       TxnSyncApi.TransactionsApi.list(),
     ]);
     allAlerts = alerts;
-    allRulesForAlerts = rules;
-    allTxnsForAlerts = transactions;
     rulesById = new Map(rules.map((r) => [r.id, r]));
     txnsById = new Map(transactions.map((t) => [t.id, t]));
-    alertTable.setData(alerts);
+    loadState = 'ready';
+    renderAlertGroups();
   } catch (err) {
-    alertTable.setError(err.message, loadAlerts);
+    loadState = 'error';
+    loadError = err.message;
+    renderAlertGroups();
     TxnSyncUI.Toast.error('Failed to load alerts', err.message);
   }
 }
@@ -212,20 +303,28 @@ async function submitAlertStatus(handle, original) {
 /* ---------------- Wiring ---------------- */
 
 document.addEventListener('DOMContentLoaded', () => {
-  initTable();
-  wireRowControls();
+  wireGroupControls();
   loadAlerts();
 
   document.getElementById('alertSearch').addEventListener('input', TxnSyncUI.debounce((e) => {
-    alertTable.setSearchTerm(e.target.value);
+    ALERT_FILTERS.search = e.target.value.trim().toLowerCase();
+    alertsPage = 1;
+    renderAlertGroups();
   }, 200));
 
   document.getElementById('alertStatusFilter').addEventListener('change', (e) => {
     ALERT_FILTERS.status = e.target.value;
-    alertTable.setFilter(buildAlertFilterFn());
+    alertsPage = 1;
+    renderAlertGroups();
   });
   document.getElementById('alertSeverityFilter').addEventListener('change', (e) => {
     ALERT_FILTERS.severity = e.target.value;
-    alertTable.setFilter(buildAlertFilterFn());
+    alertsPage = 1;
+    renderAlertGroups();
+  });
+  document.getElementById('alertSortBy').addEventListener('change', (e) => {
+    ALERT_FILTERS.sortBy = e.target.value;
+    alertsPage = 1;
+    renderAlertGroups();
   });
 });
