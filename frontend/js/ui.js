@@ -26,6 +26,15 @@ function formatCurrency(amount, currency = 'USD') {
   }
 }
 
+function currencySymbol(currencyCode) {
+  try {
+    const parts = new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode, currencyDisplay: 'narrowSymbol' }).formatToParts(0);
+    return parts.find((p) => p.type === 'currency')?.value || currencyCode;
+  } catch (e) {
+    return currencyCode;
+  }
+}
+
 function formatNumber(value) {
   if (value === null || value === undefined) return '—';
   return new Intl.NumberFormat('en-US').format(Number(value));
@@ -233,7 +242,7 @@ function renderBlockState(container, { icon = 'fa-inbox', title, desc = '', acti
 }
 
 window.TxnSyncUI = {
-  escapeHtml, formatCurrency, formatNumber, formatDate, formatDateTime, formatRelativeTime,
+  escapeHtml, formatCurrency, currencySymbol, formatNumber, formatDate, formatDateTime, formatRelativeTime,
   titleCase, debounce, statusBadge, badgeHtml, toneFor,
   Toast, openModal,
   renderSkeletonRows, renderTableMessageRow, renderBlockState,
