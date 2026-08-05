@@ -103,7 +103,7 @@ const TONE_HEX = {
 
 const BADGE_TONES = {
   txnStatus: { COMPLETED: 'success', PENDING: 'warning', FAILED: 'danger', REVERSED: 'neutral', CANCELLED: 'neutral' },
-  alertStatus: { OPEN: 'danger', ACKNOWLEDGED: 'warning', RESOLVED: 'success', DISMISSED: 'neutral' },
+  alertStatus: { OPEN: 'danger', ACKNOWLEDGED: 'warning', INVESTIGATING: 'info', CLOSED: 'success', DISMISSED: 'neutral' },
   severity: { LOW: 'info', MEDIUM: 'warning', HIGH: 'danger', CRITICAL: 'danger' },
 };
 

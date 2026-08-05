@@ -9,10 +9,37 @@
  * This uses a hand-rolled card-list renderer rather than the shared
  * DataTable, since DataTable is row-per-record and has no concept of
  * grouping several alerts under one shared transaction header.
+ *
+ * Alert status follows a fixed workflow rather than a free-form field:
+ *
+ *   OPEN -> ACKNOWLEDGED -> INVESTIGATING -> CLOSED
+ *                |                |
+ *                v                v
+ *            DISMISSED        DISMISSED
+ *
+ * The backend stores status as an unconstrained string (PATCH accepts
+ * anything), so this state machine is enforced here on the frontend: the
+ * detail modal only ever offers buttons for the current status's valid
+ * next states, instead of a free select.
  */
 
 const SEVERITY_RANK = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
 const ALERT_PAGE_SIZE = 6;
+
+const ALERT_TRANSITIONS = {
+  OPEN: ['ACKNOWLEDGED'],
+  ACKNOWLEDGED: ['INVESTIGATING', 'DISMISSED'],
+  INVESTIGATING: ['CLOSED', 'DISMISSED'],
+  CLOSED: [],
+  DISMISSED: [],
+};
+
+const TRANSITION_META = {
+  ACKNOWLEDGED: { label: 'Acknowledge', icon: 'fa-check', btnClass: 'btn-primary' },
+  INVESTIGATING: { label: 'Start Investigating', icon: 'fa-magnifying-glass', btnClass: 'btn-primary' },
+  CLOSED: { label: 'Close Alert', icon: 'fa-circle-check', btnClass: 'btn-success' },
+  DISMISSED: { label: 'Dismiss', icon: 'fa-ban', btnClass: 'btn-secondary' },
+};
 
 let allAlerts = [];
 let rulesById = new Map();
@@ -230,6 +257,7 @@ async function loadAlerts() {
 function alertDetailBodyHtml(a) {
   const rule = rulesById.get(a.ruleId);
   const txn = txnsById.get(a.transactionId);
+  const nextStates = ALERT_TRANSITIONS[(a.status || '').toUpperCase()] || [];
   return `
     <div class="detail-grid">
       <div class="detail-item"><label>Alert ID</label><div class="value mono">#${a.id}</div></div>
@@ -245,57 +273,66 @@ function alertDetailBodyHtml(a) {
       ${a.resolutionNotes ? `<div class="detail-divider"></div><div class="detail-note" style="grid-column:1/-1;"><strong>Existing notes:</strong> ${TxnSyncUI.escapeHtml(a.resolutionNotes)}</div>` : ''}
     </div>
     <div class="detail-divider" style="margin: var(--space-5) 0;"></div>
-    <form id="alertStatusForm" novalidate>
-      <div class="form-grid">
-        <div class="form-field">
-          <label class="form-label" for="f-alertStatus">Update Status</label>
-          <select class="form-control" id="f-alertStatus">
-            ${['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'DISMISSED'].map((s) => `<option value="${s}" ${a.status === s ? 'selected' : ''}>${TxnSyncUI.titleCase(s)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="form-field span-2">
-          <label class="form-label" for="f-resolutionNotes">Resolution Notes <span class="optional">(optional)</span></label>
-          <textarea class="form-control" id="f-resolutionNotes" placeholder="Add context for this status change…">${TxnSyncUI.escapeHtml(a.resolutionNotes || '')}</textarea>
-        </div>
-      </div>
-    </form>
+    ${nextStates.length === 0
+      ? `<p class="text-secondary" style="font-size:12.5px;">This alert is <strong>${TxnSyncUI.titleCase(a.status)}</strong> — a terminal state in the alert workflow, so no further status changes are possible.</p>`
+      : `
+        <form id="alertStatusForm" novalidate>
+          <div class="form-grid single">
+            <div class="form-field">
+              <label class="form-label" for="f-resolutionNotes">Notes for this status change <span class="optional">(optional)</span></label>
+              <textarea class="form-control" id="f-resolutionNotes" placeholder="Add context for the next status…"></textarea>
+            </div>
+          </div>
+        </form>
+      `}
   `;
 }
 
+function transitionButtonsHtml(currentStatus) {
+  const nextStates = ALERT_TRANSITIONS[(currentStatus || '').toUpperCase()] || [];
+  return nextStates.map((target) => {
+    const meta = TRANSITION_META[target];
+    return `<button class="btn ${meta.btnClass}" data-transition="${target}"><i class="fa-solid ${meta.icon}"></i> ${meta.label}</button>`;
+  }).join('');
+}
+
 function openAlertDetailModal(row) {
-  const handle = TxnSyncUI.openModal({
+  TxnSyncUI.openModal({
     title: `Alert #${row.id}`,
     subtitle: rulesById.get(row.ruleId)?.ruleName || `Rule #${row.ruleId}`,
     size: 'lg',
     bodyHtml: alertDetailBodyHtml(row),
     footerHtml: `
-      <button class="btn btn-secondary" data-close>Close</button>
-      <button class="btn btn-primary" id="submitAlertStatusBtn"><i class="fa-solid fa-floppy-disk"></i> Update Status</button>
+      <button class="btn btn-secondary" data-close>Done</button>
+      ${transitionButtonsHtml(row.status)}
     `,
     onMount: (h) => {
       h.overlay.querySelector('[data-close]').addEventListener('click', h.close);
-      h.overlay.querySelector('#submitAlertStatusBtn').addEventListener('click', () => submitAlertStatus(h, row));
+      h.overlay.querySelectorAll('[data-transition]').forEach((btn) => {
+        btn.addEventListener('click', () => submitAlertTransition(h, row, btn.dataset.transition));
+      });
     },
   });
 }
 
-async function submitAlertStatus(handle, original) {
+async function submitAlertTransition(handle, original, targetStatus) {
   const overlay = handle.overlay;
-  const status = overlay.querySelector('#f-alertStatus').value;
-  const notes = overlay.querySelector('#f-resolutionNotes').value.trim() || null;
+  const notes = overlay.querySelector('#f-resolutionNotes')?.value.trim() || null;
+  const buttons = overlay.querySelectorAll('[data-transition]');
+  const activeBtn = overlay.querySelector(`[data-transition="${targetStatus}"]`);
+  const originalHtml = activeBtn.innerHTML;
 
-  const btn = overlay.querySelector('#submitAlertStatusBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+  buttons.forEach((b) => { b.disabled = true; });
+  activeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
 
   try {
-    await TxnSyncApi.AlertsApi.updateStatus(original.id, status, notes);
+    await TxnSyncApi.AlertsApi.updateStatus(original.id, targetStatus, notes);
     handle.close();
-    TxnSyncUI.Toast.success(`Alert #${original.id} updated`, `Status set to ${TxnSyncUI.titleCase(status)}.`);
+    TxnSyncUI.Toast.success(`Alert #${original.id} updated`, `Status set to ${TxnSyncUI.titleCase(targetStatus)}.`);
     loadAlerts();
   } catch (err) {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Update Status';
+    buttons.forEach((b) => { b.disabled = false; });
+    activeBtn.innerHTML = originalHtml;
     TxnSyncUI.Toast.error('Could not update alert', err.message);
   }
 }

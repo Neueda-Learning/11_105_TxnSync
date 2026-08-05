@@ -65,7 +65,8 @@ function renderStats({ transactions, accounts, rules, alerts }) {
 
   const openAlerts = alerts.filter((a) => (a.status || '').toUpperCase() === 'OPEN').length;
   const ackAlerts = alerts.filter((a) => (a.status || '').toUpperCase() === 'ACKNOWLEDGED').length;
-  const resolvedAlerts = alerts.filter((a) => (a.status || '').toUpperCase() === 'RESOLVED').length;
+  const investigatingAlerts = alerts.filter((a) => (a.status || '').toUpperCase() === 'INVESTIGATING').length;
+  const closedAlerts = alerts.filter((a) => (a.status || '').toUpperCase() === 'CLOSED').length;
 
   grid.innerHTML = [
     statCardHtml({
@@ -91,7 +92,7 @@ function renderStats({ transactions, accounts, rules, alerts }) {
     statCardHtml({
       icon: 'fa-triangle-exclamation', tone: 'danger',
       value: TxnSyncUI.formatNumber(openAlerts),
-      label: `${ackAlerts} acknowledged · ${resolvedAlerts} resolved`,
+      label: `${ackAlerts} acknowledged · ${investigatingAlerts} investigating · ${closedAlerts} closed`,
       trend: openAlerts > 0
         ? { tone: 'down', icon: 'fa-arrow-up', text: 'Needs review' }
         : { tone: 'up', icon: 'fa-check', text: 'All clear' },
