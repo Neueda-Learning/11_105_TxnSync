@@ -98,9 +98,16 @@ public class TransactionService {
                             + rule.getThresholdAmount() + " USD)";
                 }
             } else if ("NEW_PAYEE".equalsIgnoreCase(rule.getRuleType())) {
-                if (transaction.getPayeeId() != null && transaction.getPayeeId().startsWith("PAYEE-NEW")) {
-                    triggered = true;
-                    note = "Transaction executed with new unverified payee: " + transaction.getPayeeId();
+                if (transaction.getPayeeId() != null && transaction.getAccountId() != null) {
+                    long previous = transactionRepository.countPreviousTransactions(
+                        transaction.getAccountId(),
+                        transaction.getPayeeId(),
+                        transaction.getTimestamp()
+                    );
+                    if (previous == 0) {
+                        triggered = true;
+                        note = "Transaction executed with new payee for this account: " + transaction.getPayeeId();
+                    }
                 }
             }
 
