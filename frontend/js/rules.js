@@ -20,11 +20,22 @@ function buildRuleFilterFn() {
 }
 
 /**
- * Threshold and Window/Count only apply to some rule types (AMOUNT/DAILY_LIMIT
- * vs. VELOCITY), so either column is dropped entirely — not just blanked per
- * row — whenever every currently loaded rule has null for it.
+ * A rule only ever uses a threshold amount (AMOUNT/DAILY_LIMIT) OR a time
+ * window + count (VELOCITY) — never both — so Threshold and Window/Count are
+ * merged into one Configuration column that shows whichever value that rule
+ * actually has, instead of two mostly-empty columns. The column itself only
+ * disappears if not a single currently loaded rule has any configuration at
+ * all (e.g. every rule were a parameterless type like NEW_PAYEE).
  */
-function ruleColumns({ showThreshold = true, showWindowCount = true } = {}) {
+function ruleConfigText(r) {
+  if (r.thresholdAmount != null) return TxnSyncUI.formatCurrency(r.thresholdAmount, 'USD');
+  const parts = [];
+  if (r.timeWindowMinutes != null) parts.push(`${r.timeWindowMinutes} min`);
+  if (r.transactionCount != null) parts.push(`${r.transactionCount} txns`);
+  return parts.join(' / ');
+}
+
+function ruleColumns({ showConfig = true } = {}) {
   const columns = [
     {
       key: 'ruleName', label: 'Rule', sortable: true, sortValue: (r) => r.ruleName || '',
@@ -36,20 +47,10 @@ function ruleColumns({ showThreshold = true, showWindowCount = true } = {}) {
     { key: 'severity', label: 'Severity', sortable: true, sortValue: (r) => r.severity || '', render: (r) => TxnSyncUI.statusBadge('severity', r.severity) },
   ];
 
-  if (showThreshold) {
+  if (showConfig) {
     columns.push({
-      key: 'thresholdAmount', label: 'Threshold', sortable: true, sortValue: (r) => Number(r.thresholdAmount) || 0,
-      render: (r) => r.thresholdAmount != null ? TxnSyncUI.formatCurrency(r.thresholdAmount, 'USD') : '<span class="text-muted">—</span>',
-    });
-  }
-
-  if (showWindowCount) {
-    columns.push({
-      key: 'window', label: 'Window / Count',
-      render: (r) => {
-        if (r.timeWindowMinutes == null && r.transactionCount == null) return '<span class="text-muted">—</span>';
-        return `${r.timeWindowMinutes != null ? r.timeWindowMinutes + ' min' : '—'} / ${r.transactionCount != null ? r.transactionCount + ' txns' : '—'}`;
-      },
+      key: 'config', label: 'Configuration', sortable: true, sortValue: (r) => Number(r.thresholdAmount ?? r.timeWindowMinutes ?? r.transactionCount) || 0,
+      render: (r) => ruleConfigText(r),
     });
   }
 
@@ -76,11 +77,10 @@ function ruleColumns({ showThreshold = true, showWindowCount = true } = {}) {
   return columns;
 }
 
-/** Recomputes which optional columns should show, based on the full loaded rule set. */
+/** Recomputes whether the Configuration column should show, based on the full loaded rule set. */
 function visibleRuleColumns(rules) {
-  const showThreshold = rules.some((r) => r.thresholdAmount !== null && r.thresholdAmount !== undefined);
-  const showWindowCount = rules.some((r) => r.timeWindowMinutes !== null && r.timeWindowMinutes !== undefined || r.transactionCount !== null && r.transactionCount !== undefined);
-  return ruleColumns({ showThreshold, showWindowCount });
+  const showConfig = rules.some((r) => ruleConfigText(r) !== '');
+  return ruleColumns({ showConfig });
 }
 
 function initTable() {
