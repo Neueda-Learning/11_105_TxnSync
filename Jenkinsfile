@@ -18,8 +18,8 @@ pipeline {
 
         stage('Configure Frontend API') {
             steps {
-                echo 'Injecting Linux Server IP into frontend configuration...'
-                sh "sed -i 's/localhost:8080/${SERVER_IP}:8081/g' frontend/js/api.js"
+                echo 'Injecting Server IP and port 8082 into frontend configuration...'
+                sh "sed -i 's/localhost:8080/${SERVER_IP}:8082/g' frontend/js/api.js"
             }
         }
 
@@ -49,7 +49,8 @@ pipeline {
                 sh 'docker ps'
                 echo '===================================================='
                 echo '✅ TxnSync is Live!'
-                echo "🌐 Dashboard accessible at: http://${SERVER_IP}"
+                echo "🌐 Dashboard accessible at: http://${SERVER_IP}:83"
+                echo "🔌 Backend API accessible at: http://${SERVER_IP}:8082"
                 echo '===================================================='
             }
         }
