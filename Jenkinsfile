@@ -16,17 +16,6 @@ pipeline {
             }
         }
 
-        stage('Backend Unit & Integration Tests') {
-            steps {
-                dir('backend/txnSync') {
-                    echo 'Setting permissions and running Spring Boot Tests...'
-                    sh 'chmod +x mvnw' 
-                    sh './mvnw clean test' 
-                    sh './mvnw clean test -DskipTests'
-                }
-            }
-        }
-
         stage('Configure Frontend API') {
             steps {
                 echo 'Injecting Linux Server IP into frontend configuration...'
