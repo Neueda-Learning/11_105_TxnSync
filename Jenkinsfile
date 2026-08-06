@@ -40,12 +40,16 @@ pipeline {
             }
         }
 
-        stage('Build & Deploy Full Stack') {
+       stage('Build & Deploy Full Stack') {
             steps {
                 echo 'Building Frontend & Backend images, and launching Database...'
                 
                 withCredentials([string(credentialsId: 'txnsync-db-password', variable: 'SECRET_DB_PASS')]) {
-                    sh 'export DB_PASSWORD=$SECRET_DB_PASS && docker-compose up -d --build'
+                    sh """
+                        export DB_PASSWORD=\$SECRET_DB_PASS
+                        export SERVER_IP=${SERVER_IP}
+                        docker-compose up -d --build
+                    """
                 }
             }
         }

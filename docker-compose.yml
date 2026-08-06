@@ -27,6 +27,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/txnsync_db
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      APP_CORS_ORIGINS: http://${SERVER_IP}
+      ACTUATOR_ALLOWED_ORIGINS: http://${SERVER_IP}
     ports:
       - "8080:8080"
     networks:
