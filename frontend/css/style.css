@@ -117,6 +117,56 @@
 :root[data-theme='dark'] .modal-overlay { background: rgba(0, 0, 0, 0.6); }
 :root[data-theme='dark'] .switch-track::after { background: #e8ecf7; }
 
+/* ---------- Pink theme ---------- */
+:root[data-theme='pink'] {
+  --color-bg: #fdf1f6;
+  --color-surface: #ffffff;
+  --color-surface-alt: #fff0f6;
+
+  --color-sidebar: #6b1339;
+  --color-sidebar-alt: #85184a;
+  --color-sidebar-text: #f6c9dc;
+  --color-sidebar-text-active: #ffffff;
+  --color-sidebar-border: #9d2963;
+
+  --color-border: #f6c9dc;
+  --color-border-strong: #ec9dc4;
+
+  --color-text-primary: #4a1029;
+  --color-text-secondary: #97385f;
+  --color-text-muted: #c67a9e;
+
+  --color-primary: #c026d3;
+  --color-primary-hover: #a21caf;
+  --color-primary-light: #fae8ff;
+  --color-primary-dark: #86198f;
+
+  --color-success: #12875a;
+  --color-success-light: #e7f7ef;
+  --color-danger: #d3352f;
+  --color-danger-light: #fdeceb;
+  --color-warning: #b6720b;
+  --color-warning-light: #fdf3e0;
+  --color-info: #1179a8;
+  --color-info-light: #e6f5fb;
+  --color-neutral: #8a5a72;
+  --color-neutral-light: #f7e3ed;
+
+  --shadow-xs: 0 1px 2px rgba(192, 38, 211, 0.08);
+  --shadow-sm: 0 1px 3px rgba(192, 38, 211, 0.10), 0 1px 2px rgba(192, 38, 211, 0.06);
+  --shadow-md: 0 4px 12px rgba(192, 38, 211, 0.10), 0 2px 4px rgba(192, 38, 211, 0.06);
+  --shadow-lg: 0 12px 32px rgba(192, 38, 211, 0.16), 0 4px 10px rgba(192, 38, 211, 0.08);
+}
+:root[data-theme='pink'] ::-webkit-scrollbar-thumb { background: #f3aecb; }
+:root[data-theme='pink'] ::-webkit-scrollbar-thumb:hover { background: #ec8ab8; }
+:root[data-theme='pink'] ::selection { background: var(--color-primary-light); color: var(--color-primary-dark); }
+:root[data-theme='pink'] .sidebar-overlay { background: rgba(131, 24, 70, 0.35); }
+:root[data-theme='pink'] .modal-overlay { background: rgba(131, 24, 70, 0.35); }
+:root[data-theme='pink'] .sidebar-brand-mark,
+:root[data-theme='pink'] .header-avatar {
+  background: linear-gradient(135deg, var(--color-primary), #f472b6);
+}
+
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -370,9 +420,10 @@ textarea:focus-visible, [tabindex]:focus-visible, .sidebar-link:focus-visible, t
   border: 2px solid var(--color-surface);
 }
 
-.a11y-menu { position: relative; }
-.a11y-panel[hidden] { display: none; }
-.a11y-panel {
+/* Shared header dropdown popover — used by both the accessibility panel and the theme menu */
+.header-popover-menu { position: relative; }
+.header-popover[hidden] { display: none; }
+.header-popover {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
@@ -387,6 +438,7 @@ textarea:focus-visible, [tabindex]:focus-visible, .sidebar-link:focus-visible, t
   flex-direction: column;
   gap: var(--space-3);
 }
+
 .a11y-panel-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--color-text-muted); }
 .a11y-seg { display: flex; border: 1px solid var(--color-border); border-radius: var(--radius-sm); overflow: hidden; }
 .a11y-seg-btn {
@@ -402,6 +454,27 @@ textarea:focus-visible, [tabindex]:focus-visible, .sidebar-link:focus-visible, t
 .a11y-seg-btn:first-child { border-left: none; }
 .a11y-seg-btn[aria-checked='true'] { background: var(--color-primary); color: #fff; }
 .a11y-panel-row { font-size: 13px; color: var(--color-text-primary); }
+
+.theme-panel { width: 180px; }
+.theme-option {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600;
+  color: var(--color-text-primary);
+  text-align: left;
+}
+.theme-option:hover { background: var(--color-surface-alt); }
+.theme-option[aria-checked='true'] { background: var(--color-primary-light); color: var(--color-primary); }
+.theme-swatch { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; border: 1px solid var(--color-border); }
+.theme-swatch.light { background: linear-gradient(135deg, #ffffff 50%, #eef1f7 50%); }
+.theme-swatch.dark { background: linear-gradient(135deg, #131a2b 50%, #0b0f1a 50%); }
+.theme-swatch.pink { background: linear-gradient(135deg, #f9a8d4 50%, #c026d3 50%); }
+.theme-option .theme-check { margin-left: auto; opacity: 0; font-size: 11px; }
+.theme-option[aria-checked='true'] .theme-check { opacity: 1; }
 
 .header-avatar {
   width: 38px; height: 38px; border-radius: 50%;

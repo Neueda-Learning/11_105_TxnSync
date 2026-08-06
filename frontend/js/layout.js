@@ -54,11 +54,11 @@ function initLayout() {
           </div>
           <div class="header-right">
             <div class="header-clock" id="headerClock" aria-hidden="true"></div>
-            <div class="a11y-menu">
+            <div class="header-popover-menu">
               <button class="header-icon-btn" id="a11yToggle" title="Accessibility options" aria-label="Accessibility options" aria-haspopup="true" aria-expanded="false" aria-controls="a11yPanel">
                 <i class="fa-solid fa-universal-access"></i>
               </button>
-              <div class="a11y-panel" id="a11yPanel" role="menu" aria-label="Accessibility options" hidden>
+              <div class="header-popover a11y-panel" id="a11yPanel" role="menu" aria-label="Accessibility options" hidden>
                 <div class="a11y-panel-label" id="a11yFontLabel">Text size</div>
                 <div class="a11y-seg" role="radiogroup" aria-labelledby="a11yFontLabel">
                   <button type="button" class="a11y-seg-btn" data-font-size="normal" role="radio" aria-checked="true">A</button>
@@ -77,9 +77,25 @@ function initLayout() {
                 </label>
               </div>
             </div>
-            <button class="header-icon-btn" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
-              <i class="fa-solid fa-moon"></i>
-            </button>
+            <div class="header-popover-menu">
+              <button class="header-icon-btn" id="themeToggle" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="themePanel">
+                <i class="fa-solid fa-moon"></i>
+              </button>
+              <div class="header-popover theme-panel" id="themePanel" role="menu" aria-label="Theme" hidden>
+                <button type="button" class="theme-option" data-theme-choice="light" role="menuitemradio" aria-checked="false">
+                  <span class="theme-swatch light"></span> Light
+                  <i class="fa-solid fa-check theme-check"></i>
+                </button>
+                <button type="button" class="theme-option" data-theme-choice="dark" role="menuitemradio" aria-checked="false">
+                  <span class="theme-swatch dark"></span> Dark
+                  <i class="fa-solid fa-check theme-check"></i>
+                </button>
+                <button type="button" class="theme-option" data-theme-choice="pink" role="menuitemradio" aria-checked="false">
+                  <span class="theme-swatch pink"></span> Pink
+                  <i class="fa-solid fa-check theme-check"></i>
+                </button>
+              </div>
+            </div>
             <a class="header-icon-btn" href="${root}pages/alerts.html" title="Open alerts" id="headerBell" aria-label="Open alerts">
               <i class="fa-solid fa-bell"></i>
               <span class="ping" id="headerBellPing" style="display:none;"></span>
@@ -111,21 +127,55 @@ function initLayout() {
 }
 
 const THEME_KEY = 'txnsync-theme';
+const THEME_META = {
+  light: { icon: 'fa-sun', label: 'Light' },
+  dark: { icon: 'fa-moon', label: 'Dark' },
+  pink: { icon: 'fa-heart', label: 'Pink' },
+};
 
 function wireThemeToggle() {
-  const btn = document.getElementById('themeToggle');
-  const icon = btn.querySelector('i');
+  const root = document.documentElement;
+  const toggle = document.getElementById('themeToggle');
+  const icon = toggle.querySelector('i');
+  const panel = document.getElementById('themePanel');
+  const options = Array.from(panel.querySelectorAll('[data-theme-choice]'));
 
-  const applyIcon = (theme) => {
-    icon.className = theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  const closePanel = () => {
+    panel.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
   };
-  applyIcon(document.documentElement.getAttribute('data-theme') || 'light');
+  const openPanel = () => {
+    panel.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+    (options.find((o) => o.getAttribute('aria-checked') === 'true') || options[0]).focus();
+  };
 
-  btn.addEventListener('click', () => {
-    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem(THEME_KEY, next);
-    applyIcon(next);
+  const applyTheme = (theme) => {
+    const meta = THEME_META[theme] || THEME_META.light;
+    root.setAttribute('data-theme', theme);
+    icon.className = `fa-solid ${meta.icon}`;
+    toggle.title = `Theme: ${meta.label}`;
+    toggle.setAttribute('aria-label', `Change theme (current: ${meta.label})`);
+    options.forEach((o) => o.setAttribute('aria-checked', String(o.dataset.themeChoice === theme)));
+  };
+  applyTheme(root.getAttribute('data-theme') || 'light');
+
+  toggle.addEventListener('click', () => (panel.hidden ? openPanel() : closePanel()));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) { closePanel(); toggle.focus(); }
+  });
+  document.addEventListener('click', (e) => {
+    if (!panel.hidden && !panel.contains(e.target) && e.target !== toggle) closePanel();
+  });
+
+  options.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const theme = btn.dataset.themeChoice;
+      applyTheme(theme);
+      localStorage.setItem(THEME_KEY, theme);
+      closePanel();
+      toggle.focus();
+    });
   });
 }
 
