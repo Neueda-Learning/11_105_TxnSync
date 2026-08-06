@@ -1,7 +1,11 @@
 package com.finance.txnSync.controllers;
 
+import com.finance.txnSync.dto.account.AccountDtoMapper;
+import com.finance.txnSync.dto.account.AccountResponseDto;
+import com.finance.txnSync.dto.account.CreateAccountRequestDto;
 import com.finance.txnSync.models.Account;
 import com.finance.txnSync.services.AccountService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,23 +25,26 @@ public class AccountController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Account>> getAllAccounts() {
-        List<Account> accounts = accountService.getAllAccounts();
+    public ResponseEntity<List<AccountResponseDto>> getAllAccounts() {
+        List<AccountResponseDto> accounts = accountService.getAllAccounts()
+                .stream()
+                .map(AccountDtoMapper::toResponse)
+                .toList();
         return ResponseEntity.ok(accounts);
     }
 
     @GetMapping("/{accountId}")
-    public ResponseEntity<Account> getAccountById(@PathVariable String accountId) {
+    public ResponseEntity<AccountResponseDto> getAccountById(@PathVariable String accountId) {
         Account account = accountService.getAccountById(accountId);
         if (account == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(account);
+        return ResponseEntity.ok(AccountDtoMapper.toResponse(account));
     }
 
     @PostMapping
-    public ResponseEntity<Account> createAccount(@RequestBody Account account) {
-        Account created = accountService.createAccount(account);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<AccountResponseDto> createAccount(@Valid @RequestBody CreateAccountRequestDto request) {
+        Account created = accountService.createAccount(AccountDtoMapper.toModel(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(AccountDtoMapper.toResponse(created));
     }
 }
