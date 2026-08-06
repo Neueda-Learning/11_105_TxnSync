@@ -30,7 +30,7 @@ services:
       APP_CORS_ORIGINS: http://${SERVER_IP}
       ACTUATOR_ALLOWED_ORIGINS: http://${SERVER_IP}
     ports:
-      - "8082:8082"
+      - "8082:80"
     networks:
       - txnsync-network
 
