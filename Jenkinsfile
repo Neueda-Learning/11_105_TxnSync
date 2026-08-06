@@ -49,7 +49,7 @@ pipeline {
                 sh 'docker ps'
                 echo '===================================================='
                 echo '✅ TxnSync is Live!'
-                echo "🌐 Dashboard accessible at: http://${SERVER_IP}:83"
+                echo "🌐 Dashboard accessible at: http://${SERVER_IP}:8083"
                 echo "🔌 Backend API accessible at: http://${SERVER_IP}:8082"
                 echo '===================================================='
             }
