@@ -22,6 +22,7 @@ pipeline {
                     echo 'Setting permissions and running Spring Boot Tests...'
                     sh 'chmod +x mvnw' 
                     sh './mvnw clean test' 
+                    sh './mvnw clean test -DskipTests'
                 }
             }
         }
