@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transactions · TxnSync</title>
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+</head>
+<body data-page="transactions" data-title="Transactions" data-subtitle="Search, filter, and process account transactions" data-root="../">
+
+  <section class="card">
+    <div class="card-header">
+      <div class="card-header-titles">
+        <h2>All Transactions</h2>
+        <p>Every transaction processed through the monitoring engine</p>
+      </div>
+      <button class="btn btn-primary" id="newTxnBtn"><i class="fa-solid fa-plus"></i> New Transaction</button>
+    </div>
+    <div class="card-body">
+      <div class="toolbar">
+        <div class="toolbar-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" class="form-control" id="txnSearch" placeholder="Search payee, account, description…" />
+        </div>
+        <div class="toolbar-filters">
+          <select class="form-control" id="txnStatusFilter">
+            <option value="">All statuses</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="PENDING">Pending</option>
+            <option value="FAILED">Failed</option>
+          </select>
+          <select class="form-control" id="txnTypeFilter">
+            <option value="">All types</option>
+            <option value="DEBIT">Debit</option>
+            <option value="CREDIT">Credit</option>
+          </select>
+          <select class="form-control" id="txnCurrencyFilter">
+            <option value="">All currencies</option>
+          </select>
+        </div>
+      </div>
+      <div id="txnTableContainer"></div>
+    </div>
+  </section>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/ui.js"></script>
+  <script src="../js/table.js"></script>
+  <script src="../js/layout.js"></script>
+  <script src="../js/transactions.js"></script>
+</body>
+</html>
