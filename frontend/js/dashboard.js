@@ -1,9 +1,5 @@
-/**
- * Dashboard page — aggregates real data from the transactions, accounts,
- * rules, and alerts endpoints into operational stat cards and widgets.
- * There is no dedicated stats endpoint, so every number here is computed
- * client-side from the full collections the backend returns.
- */
+
+
 
 const TONE_HEX = TxnSyncUI.TONE_HEX;
 
@@ -197,6 +193,228 @@ function renderTypeDonut(transactions) {
   `).join('');
 }
 
+/* ---------------- Shared chart tooltip ---------------- */
+
+function getChartTooltip() {
+  let tip = document.getElementById('chartTooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'chartTooltip';
+    tip.className = 'chart-tooltip';
+    document.body.appendChild(tip);
+  }
+  return tip;
+}
+
+function showChartTooltip(target, html) {
+  const tip = getChartTooltip();
+  tip.innerHTML = html;
+  tip.classList.add('visible');
+  const rect = target.getBoundingClientRect();
+  const tipRect = tip.getBoundingClientRect();
+  let left = rect.left + rect.width / 2 - tipRect.width / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - tipRect.width - 8));
+  tip.style.left = `${left}px`;
+  tip.style.top = `${rect.top - tipRect.height - 8}px`;
+}
+
+function hideChartTooltip() {
+  getChartTooltip().classList.remove('visible');
+}
+
+/* ---------------- Alert Lifecycle (donut + KPI) ---------------- */
+
+const ALERT_STATUS_ORDER = ['OPEN', 'ACKNOWLEDGED', 'INVESTIGATING', 'CLOSED', 'DISMISSED'];
+
+function renderAlertLifecycle(alerts) {
+  const svg = document.getElementById('alertLifecycleDonut');
+  const legend = document.getElementById('alertLifecycleLegend');
+  const kpi = document.getElementById('alertLifecycleKpi');
+
+  if (alerts.length === 0) {
+    svg.innerHTML = '';
+    legend.innerHTML = `<div class="text-muted" style="font-size:12.5px;">No alerts yet</div>`;
+    kpi.innerHTML = '';
+    return;
+  }
+
+  const counts = {};
+  alerts.forEach((a) => {
+    const status = (a.status || 'UNKNOWN').toUpperCase();
+    counts[status] = (counts[status] || 0) + 1;
+  });
+  const total = alerts.length;
+  const activeCount = (counts.OPEN || 0) + (counts.ACKNOWLEDGED || 0) + (counts.INVESTIGATING || 0);
+
+  const radius = 46, circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  // Each status keeps its own fixed tone (matches the status badges everywhere else in the
+  // app) rather than being assigned a color by rank, so a color always means the same status.
+  const segments = ALERT_STATUS_ORDER.filter((status) => counts[status] > 0).map((status) => {
+    const count = counts[status];
+    const color = TONE_HEX[TxnSyncUI.toneFor('alertStatus', status)];
+    const fraction = count / total;
+    const length = fraction * circumference;
+    const circle = `<circle cx="60" cy="60" r="${radius}" fill="none" stroke="${color}" stroke-width="16"
+      stroke-dasharray="${length} ${circumference - length}" stroke-dashoffset="${-offset}"
+      transform="rotate(-90 60 60)" stroke-linecap="butt"><title>${TxnSyncUI.titleCase(status)}: ${count} (${Math.round(fraction * 100)}%)</title></circle>`;
+    offset += length;
+    return { circle, status, count, color };
+  });
+
+  svg.innerHTML = `
+    <circle cx="60" cy="60" r="${radius}" fill="none" stroke="var(--color-neutral-light)" stroke-width="16"></circle>
+    ${segments.map((s) => s.circle).join('')}
+    <text x="60" y="56" text-anchor="middle" class="donut-center-label">${total}</text>
+    <text x="60" y="72" text-anchor="middle" class="donut-center-sub">TOTAL</text>
+  `;
+  legend.innerHTML = segments.map((s) => `
+    <div class="donut-legend-row">
+      <span class="label"><span class="dot" style="background:${s.color}"></span>${TxnSyncUI.titleCase(s.status)}</span>
+      <span class="value">${s.count} · ${Math.round((s.count / total) * 100)}%</span>
+    </div>
+  `).join('');
+
+  kpi.innerHTML = `
+    <div class="kpi-pill ${activeCount > 0 ? 'danger' : 'success'}">
+      <i class="fa-solid ${activeCount > 0 ? 'fa-triangle-exclamation' : 'fa-circle-check'}"></i>
+      <span><strong>${activeCount}</strong> active — needs review</span>
+    </div>
+  `;
+}
+
+/* ---------------- Alerts by Rule Type (bar chart) ---------------- */
+
+const RULE_TYPE_LABELS = { AMOUNT: 'Amount Threshold', VELOCITY: 'Velocity', NEW_PAYEE: 'New Payee', DAILY_LIMIT: 'Daily Limit' };
+// Fixed per-type color (not assigned by rank) so a rule type always reads the same hue.
+const RULE_TYPE_TONE = { AMOUNT: 'primary', VELOCITY: 'info', NEW_PAYEE: 'warning', DAILY_LIMIT: 'success' };
+
+function renderAlertsByRuleType({ alerts, rules }) {
+  const container = document.getElementById('ruleTypeBarChart');
+  if (alerts.length === 0) {
+    TxnSyncUI.renderBlockState(container, { title: 'No data yet', desc: 'Rule breakdown appears once alerts exist.' });
+    return;
+  }
+  const ruleById = new Map(rules.map((r) => [r.id, r]));
+  const counts = {};
+  alerts.forEach((a) => {
+    const type = ruleById.get(a.ruleId)?.ruleType || 'OTHER';
+    counts[type] = (counts[type] || 0) + 1;
+  });
+  const total = alerts.length;
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+  container.innerHTML = entries.map(([type, count]) => {
+    const label = RULE_TYPE_LABELS[type] || TxnSyncUI.titleCase(type);
+    const color = TONE_HEX[RULE_TYPE_TONE[type] || 'neutral'];
+    const pct = Math.round((count / total) * 100);
+    return `
+      <div class="breakdown-row" data-bar-tooltip="${TxnSyncUI.escapeHtml(label)}: ${count} alert${count === 1 ? '' : 's'} (${pct}%)">
+        <div class="breakdown-row-top">
+          <span class="label"><span class="dot" style="background:${color}"></span>${TxnSyncUI.escapeHtml(label)}</span>
+          <span class="value">${count} · ${pct}%</span>
+        </div>
+        <div class="breakdown-track"><div class="breakdown-fill" style="width:${pct}%; background:${color}"></div></div>
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('[data-bar-tooltip]').forEach((row) => {
+    row.addEventListener('mouseenter', () => showChartTooltip(row, TxnSyncUI.escapeHtml(row.dataset.barTooltip)));
+    row.addEventListener('mouseleave', hideChartTooltip);
+  });
+}
+
+/* ---------------- Transaction Volume vs. Alert Activity (time series) ---------------- */
+
+const TS_BUCKET_CANDIDATES_MS = [
+  60e3, 5 * 60e3, 15 * 60e3, 30 * 60e3,
+  3600e3, 2 * 3600e3, 3 * 3600e3, 6 * 3600e3, 12 * 3600e3,
+  86400e3, 2 * 86400e3, 7 * 86400e3,
+];
+const TS_MAX_BUCKETS = 14;
+
+function pickBucketMs(rangeMs) {
+  for (const c of TS_BUCKET_CANDIDATES_MS) {
+    if (rangeMs / c <= TS_MAX_BUCKETS) return c;
+  }
+  return TS_BUCKET_CANDIDATES_MS[TS_BUCKET_CANDIDATES_MS.length - 1];
+}
+
+function formatBucketLabel(date, bucketMs) {
+  if (bucketMs < 3600e3) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  if (bucketMs < 86400e3) return date.toLocaleTimeString('en-US', { hour: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function renderVolumeVsAlerts({ transactions, alerts }) {
+  const container = document.getElementById('volumeAlertsChart');
+  const times = [
+    ...transactions.map((t) => new Date(t.timestamp).getTime()),
+    ...alerts.map((a) => new Date(a.createdAt).getTime()),
+  ].filter((t) => !Number.isNaN(t));
+
+  if (times.length === 0) {
+    TxnSyncUI.renderBlockState(container, { title: 'No data yet', desc: 'Activity over time appears once transactions or alerts exist.' });
+    return;
+  }
+
+  const minTime = Math.min(...times);
+  const maxTime = Math.max(...times);
+  const bucketMs = pickBucketMs(Math.max(maxTime - minTime, 1));
+  const bucketStart = Math.floor(minTime / bucketMs) * bucketMs;
+  const bucketCount = Math.max(1, Math.ceil((maxTime - bucketStart + 1) / bucketMs));
+
+  const buckets = Array.from({ length: bucketCount }, (_, i) => ({
+    start: bucketStart + i * bucketMs,
+    txnCount: 0,
+    alertCount: 0,
+  }));
+  const bucketIndex = (ts) => Math.min(bucketCount - 1, Math.max(0, Math.floor((ts - bucketStart) / bucketMs)));
+  transactions.forEach((t) => {
+    const ts = new Date(t.timestamp).getTime();
+    if (!Number.isNaN(ts)) buckets[bucketIndex(ts)].txnCount += 1;
+  });
+  alerts.forEach((a) => {
+    const ts = new Date(a.createdAt).getTime();
+    if (!Number.isNaN(ts)) buckets[bucketIndex(ts)].alertCount += 1;
+  });
+
+  const maxTxn = Math.max(1, ...buckets.map((b) => b.txnCount));
+  const maxAlert = Math.max(1, ...buckets.map((b) => b.alertCount));
+  // Show at most ~6 axis labels so ticks never crowd, per bucket count.
+  const labelStride = Math.max(1, Math.ceil(bucketCount / 6));
+
+  const txnBars = buckets.map((b, i) => {
+    const label = formatBucketLabel(new Date(b.start), bucketMs);
+    return `<div class="ts-bar" style="height:${(b.txnCount / maxTxn) * 100}%" data-ts-tooltip="${TxnSyncUI.escapeHtml(label)}: ${b.txnCount} transaction${b.txnCount === 1 ? '' : 's'}"></div>`;
+  }).join('');
+  const alertBars = buckets.map((b) => {
+    const label = formatBucketLabel(new Date(b.start), bucketMs);
+    return `<div class="ts-bar alert" style="height:${(b.alertCount / maxAlert) * 100}%" data-ts-tooltip="${TxnSyncUI.escapeHtml(label)}: ${b.alertCount} alert${b.alertCount === 1 ? '' : 's'}"></div>`;
+  }).join('');
+  const axisLabels = buckets.map((b, i) =>
+    `<span>${i % labelStride === 0 ? TxnSyncUI.escapeHtml(formatBucketLabel(new Date(b.start), bucketMs)) : ''}</span>`
+  ).join('');
+
+  container.innerHTML = `
+    <div class="ts-pane">
+      <div class="ts-pane-label"><span class="dot" style="background:var(--color-primary)"></span>Transactions</div>
+      <div class="ts-bars">${txnBars}</div>
+    </div>
+    <div class="ts-pane">
+      <div class="ts-pane-label"><span class="dot" style="background:var(--color-danger)"></span>Alerts</div>
+      <div class="ts-bars">${alertBars}</div>
+    </div>
+    <div class="ts-axis">${axisLabels}</div>
+  `;
+
+  container.querySelectorAll('[data-ts-tooltip]').forEach((bar) => {
+    bar.addEventListener('mouseenter', () => showChartTooltip(bar, TxnSyncUI.escapeHtml(bar.dataset.tsTooltip)));
+    bar.addEventListener('mouseleave', hideChartTooltip);
+  });
+}
+
 function renderRecentAlerts({ alerts, rules, transactions }) {
   const container = document.getElementById('recentAlertsFeed');
   const recent = alerts.slice(0, 5);
@@ -246,6 +464,9 @@ async function loadDashboard() {
     renderRecentTransactions(transactions);
     renderStatusBreakdown(transactions);
     renderTypeDonut(transactions);
+    renderAlertLifecycle(alerts);
+    renderAlertsByRuleType({ alerts, rules });
+    renderVolumeVsAlerts({ transactions, alerts });
     renderRecentAlerts({ alerts, rules, transactions });
   } catch (err) {
     const grid = document.getElementById('statGrid');

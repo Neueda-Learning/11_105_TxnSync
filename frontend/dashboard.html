@@ -94,6 +94,50 @@
     </div>
   </section>
 
+  <section class="chart-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-titles">
+          <h2>Alert Lifecycle</h2>
+          <p>Where alerts stand in the review workflow</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="alertLifecycleKpi"></div>
+        <div class="donut-widget">
+          <svg id="alertLifecycleDonut" width="120" height="120" viewBox="0 0 120 120"></svg>
+          <div class="donut-legend" id="alertLifecycleLegend"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-titles">
+          <h2>Alerts by Rule Type</h2>
+          <p>Which monitoring rules are firing most</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="breakdown-list" id="ruleTypeBarChart"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" style="margin-bottom: var(--space-5);">
+    <div class="card-header">
+      <div class="card-header-titles">
+        <h2>Transaction Volume vs. Alert Activity</h2>
+        <p>Transaction throughput and alert counts over time, aligned by time bucket (independent scales)</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="ts-chart-scroll">
+        <div class="ts-chart" id="volumeAlertsChart"></div>
+      </div>
+    </div>
+  </section>
+
   <section class="card">
     <div class="card-header">
       <div class="card-header-titles">

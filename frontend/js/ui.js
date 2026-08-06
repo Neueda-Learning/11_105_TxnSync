@@ -1,10 +1,3 @@
-/**
- * TxnSync UI kit: toasts, modals, formatters, badge helpers, and
- * loading/empty/error state renderers shared by every page.
- */
-
-/* ---------------- Escaping / formatting ---------------- */
-
 function escapeHtml(value) {
   if (value === null || value === undefined) return '';
   return String(value)

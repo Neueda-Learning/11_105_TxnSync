@@ -1,9 +1,3 @@
-/**
- * TxnSync reusable DataTable — client-side search, sort, and pagination
- * over an in-memory array. The backend returns full collections with no
- * query params for this, so every list page drives one of these off real
- * API data.
- */
 
 class DataTable {
   /**

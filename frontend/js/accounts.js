@@ -1,7 +1,4 @@
-/**
- * Accounts page — table (search/filter/sort/pagination), account detail
- * modal enriched with real transaction activity, and the "New Account" form.
- */
+
 
 let accTable = null;
 let allAccountsList = [];

@@ -1,12 +1,3 @@
-/**
- * TxnSync app shell — injects the sidebar and header into every page from
- * one source of truth, wires mobile nav, the live clock, the backend
- * connectivity indicator, and the open-alerts nav badge.
- *
- * Each page sets `data-page`, `data-title`, `data-subtitle` and `data-root`
- * (path prefix back to the frontend root: "./" for top-level pages, "../"
- * for files under pages/) on <body>.
- */
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', href: 'dashboard.html', icon: 'fa-gauge-high' },

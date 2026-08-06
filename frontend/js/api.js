@@ -1,8 +1,3 @@
-/**
- * TxnSync API service layer.
- * Thin fetch wrapper + one function per backend endpoint. Nothing in this
- * file touches the DOM — pages/modules consume it and render results.
- */
 
 const API_BASE_URL = 'http://localhost:8080/api/v1';
 
@@ -16,11 +11,6 @@ class ApiError extends Error {
   }
 }
 
-/**
- * Core request helper. Spring Boot's default error body is
- * {timestamp, status, error, path} with no guaranteed "message" field,
- * so we fall back through whatever's available for a readable string.
- */
 async function request(method, path, body) {
   let response;
   try {
