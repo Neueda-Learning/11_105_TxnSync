@@ -24,13 +24,14 @@ services:
     depends_on:
       - mysql
     environment:
+      PORT: 8082
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/txnsync_db
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      APP_CORS_ORIGINS: http://${SERVER_IP}
-      ACTUATOR_ALLOWED_ORIGINS: http://${SERVER_IP}
+      APP_CORS_ORIGINS: http://${SERVER_IP}:8083
+      ACTUATOR_ALLOWED_ORIGINS: http://${SERVER_IP}:8083
     ports:
-      - "8082:80"
+      - "8082:8082"
     networks:
       - txnsync-network
 

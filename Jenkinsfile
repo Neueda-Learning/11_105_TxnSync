@@ -19,7 +19,7 @@ pipeline {
         stage('Configure Frontend API') {
             steps {
                 echo 'Injecting Server IP and port 8082 into frontend configuration...'
-                sh "sed -i 's/localhost:8080/${SERVER_IP}:8082/g' frontend/js/api.js"
+                sh "sed -i 's/localhost:8082/${SERVER_IP}:8082/g' frontend/js/api.js"
             }
         }
 
