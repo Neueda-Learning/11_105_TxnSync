@@ -1,13 +1,17 @@
 package com.finance.txnSync.controllers;
 
+import com.finance.txnSync.dto.alert.AlertDtoMapper;
+import com.finance.txnSync.dto.alert.AlertResponseDto;
+import com.finance.txnSync.dto.alert.AlertStatusUpdateResponseDto;
+import com.finance.txnSync.dto.alert.UpdateAlertStatusRequestDto;
 import com.finance.txnSync.models.Alert;
 import com.finance.txnSync.services.AlertService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/alerts")
@@ -21,36 +25,31 @@ public class AlertController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Alert>> getAllAlerts() {
-        List<Alert> alerts = alertService.getAllAlerts();
+    public ResponseEntity<List<AlertResponseDto>> getAllAlerts() {
+        List<AlertResponseDto> alerts = alertService.getAllAlerts()
+                .stream()
+                .map(AlertDtoMapper::toResponse)
+                .toList();
         return ResponseEntity.ok(alerts);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Alert> getAlertById(@PathVariable Long id) {
+    public ResponseEntity<AlertResponseDto> getAlertById(@PathVariable Long id) {
         Alert alert = alertService.getAlertById(id);
         if (alert == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(alert);
+        return ResponseEntity.ok(AlertDtoMapper.toResponse(alert));
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<?> updateAlertStatus(
+    public ResponseEntity<AlertStatusUpdateResponseDto> updateAlertStatus(
             @PathVariable Long id,
-            @RequestBody Map<String, String> payload) {
-        try {
-            String status = payload.get("status");
-            String resolutionNotes = payload.get("resolutionNotes");
-            boolean updated = alertService.updateAlertStatus(id, status, resolutionNotes);
-            if (updated) {
-                return ResponseEntity.ok(Map.of("message", "Alert status updated successfully."));
-            }
-            return ResponseEntity.notFound().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(409).body(Map.of("message", e.getMessage()));
+            @Valid @RequestBody UpdateAlertStatusRequestDto payload) {
+        boolean updated = alertService.updateAlertStatus(id, payload.status(), payload.resolutionNotes());
+        if (updated) {
+            return ResponseEntity.ok(new AlertStatusUpdateResponseDto("Alert status updated successfully."));
         }
+        return ResponseEntity.notFound().build();
     }
 }
