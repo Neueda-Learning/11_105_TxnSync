@@ -88,9 +88,78 @@
 .quick-action-btn span { font-size: 12.5px; font-weight: 700; color: var(--color-text-primary); }
 .quick-action-btn small { font-size: 11px; color: var(--color-text-secondary); font-weight: 400; }
 
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  align-items: start;
+  margin-bottom: var(--space-5);
+}
+
+/* KPI pill (used above the alert lifecycle donut) */
+.kpi-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12.5px; font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-4);
+}
+.kpi-pill strong { font-size: 14px; }
+.kpi-pill.danger { background: var(--color-danger-light); color: var(--color-danger); }
+.kpi-pill.success { background: var(--color-success-light); color: var(--color-success); }
+
+/* Time series: two aligned small-multiple panes (own scales) sharing one time axis */
+.ts-chart-scroll { overflow-x: auto; }
+.ts-chart { min-width: 560px; }
+.ts-pane { display: flex; align-items: stretch; gap: var(--space-3); margin-bottom: var(--space-2); }
+.ts-pane-label {
+  flex-shrink: 0; width: 92px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 600; color: var(--color-text-secondary);
+}
+.ts-pane-label .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ts-bars { flex: 1; display: flex; align-items: flex-end; gap: 3px; height: 64px; }
+.ts-bar {
+  flex: 1;
+  min-width: 4px;
+  background: var(--color-primary);
+  border-radius: 4px 4px 0 0;
+  min-height: 2px;
+  transition: opacity var(--transition-fast);
+  cursor: pointer;
+}
+.ts-bar:hover { opacity: 0.72; }
+.ts-bar.alert { background: var(--color-danger); }
+.ts-axis { display: flex; gap: 3px; margin-left: calc(92px + var(--space-3)); }
+.ts-axis span {
+  flex: 1; min-width: 4px;
+  font-size: 10.5px; color: var(--color-text-muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Shared hover tooltip for chart marks */
+.chart-tooltip {
+  position: fixed;
+  z-index: 200;
+  background: var(--color-text-primary);
+  color: var(--color-surface);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+  display: none;
+  white-space: nowrap;
+}
+.chart-tooltip.visible { display: block; }
+
 @media (max-width: 1180px) {
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
   .dashboard-grid { grid-template-columns: 1fr; }
+  .chart-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
   .stat-grid { grid-template-columns: 1fr; }

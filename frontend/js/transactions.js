@@ -1,8 +1,3 @@
-/**
- * Transactions page — table (search/filter/sort/pagination), transaction
- * detail modal, and the "New Transaction" form that exercises the real
- * process-transaction + rule-evaluation workflow on the backend.
- */
 
 let txnTable = null;
 let allAccounts = [];
@@ -271,14 +266,6 @@ function openNewTransactionModal() {
   });
 }
 
-/**
- * The backend never returns a generated transaction id (JdbcTransactionRepository.save()
- * doesn't capture the auto-increment key — see README "Known backend limitation"), and
- * when a rule triggers, the alert insert that follows fails its FK constraint and the
- * whole request 500s even though the transaction row was already committed. Both cases
- * are worked around here by re-fetching and matching on the submitted fields rather than
- * trusting the response.
- */
 async function findRecentMatchingTransaction(payload, withinMs = 15000) {
   try {
     const list = await TxnSyncApi.TransactionsApi.list();

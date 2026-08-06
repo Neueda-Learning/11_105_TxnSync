@@ -1,7 +1,4 @@
-/**
- * Accounts page — table (search/filter/sort/pagination), account detail
- * modal enriched with real transaction activity, and the "New Account" form.
- */
+
 
 let accTable = null;
 let allAccountsList = [];
@@ -127,7 +124,7 @@ function accountDetailBodyHtml(a) {
     ${recentRows.length === 0 ? `<p class="text-secondary" style="font-size:12.5px;">No transactions recorded for this account yet.</p>` : `
       <div class="table-scroll">
         <table class="data-table">
-          <thead><tr><th>Transaction</th><th>Amount</th><th>Status</th><th>Time</th></tr></thead>
+          <thead><tr><th scope="col">Transaction</th><th scope="col">Amount</th><th scope="col">Status</th><th scope="col">Time</th></tr></thead>
           <tbody>
             ${recentRows.map((t) => `
               <tr>
