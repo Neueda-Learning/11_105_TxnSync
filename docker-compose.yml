@@ -1,0 +1,57 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: txnsync-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: txnsync_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d
+    networks:
+      - txnsync-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  backend:
+    build: ./backend/txnSync
+    container_name: txnsync-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/txnsync_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      APP_CORS_ORIGINS: http://${SERVER_IP}:8083
+      ACTUATOR_ALLOWED_ORIGINS: http://${SERVER_IP}:8083
+    ports:
+      - "8082:8082"
+    networks:
+      - txnsync-network
+
+  frontend:
+    build: ./frontend
+    container_name: txnsync-frontend
+    depends_on:
+      - backend
+    ports:
+      - "8083:80"
+    networks:
+      - txnsync-network
+
+volumes:
+  mysql-data:
+
+networks:
+  txnsync-network:
