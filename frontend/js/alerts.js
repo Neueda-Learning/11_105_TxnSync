@@ -113,7 +113,6 @@ function renderAlertRowHtml(alert) {
       <div class="alert-side">
         ${TxnSyncUI.statusBadge('severity', severity)}
         ${TxnSyncUI.statusBadge('alertStatus', alert.status)}
-        ${(alert.status || '').toUpperCase() === 'OPEN' ? `<button class="btn btn-success btn-sm btn-icon" data-quick-ack="${alert.id}" data-stop-row-click title="Acknowledge"><i class="fa-solid fa-check"></i></button>` : ''}
       </div>
     </div>
   `;
@@ -205,29 +204,26 @@ function renderAlertGroups() {
 
 function wireGroupControls() {
   document.getElementById('alertGroupsContainer').addEventListener('click', (e) => {
-    const ackBtn = e.target.closest('[data-quick-ack]');
-    if (ackBtn) {
-      quickAcknowledge(Number(ackBtn.dataset.quickAck));
-      return;
-    }
     const row = e.target.closest('[data-alert-id]');
-    if (row) {
-      const alert = allAlerts.find((a) => a.id === Number(row.dataset.alertId));
-      if (alert) openAlertDetailModal(alert);
-    }
+    if (!row) return;
+    const alert = allAlerts.find((a) => a.id === Number(row.dataset.alertId));
+    if (!alert) return;
+    openAlertAndAcknowledge(alert);
   });
 }
 
-async function quickAcknowledge(id) {
-  try {
-    await TxnSyncApi.AlertsApi.updateStatus(id, 'ACKNOWLEDGED', null);
-    const alert = allAlerts.find((a) => a.id === id);
-    if (alert) alert.status = 'ACKNOWLEDGED';
-    renderAlertGroups();
-    TxnSyncUI.Toast.success(`Alert #${id} acknowledged`);
-  } catch (err) {
-    TxnSyncUI.Toast.error('Could not acknowledge alert', err.message);
+/** Opening an alert to view it counts as acknowledging it — no separate manual step. */
+async function openAlertAndAcknowledge(alert) {
+  if ((alert.status || '').toUpperCase() === 'OPEN') {
+    try {
+      await TxnSyncApi.AlertsApi.updateStatus(alert.id, 'ACKNOWLEDGED', null);
+      alert.status = 'ACKNOWLEDGED';
+      renderAlertGroups();
+    } catch (err) {
+      TxnSyncUI.Toast.error('Could not acknowledge alert', err.message);
+    }
   }
+  openAlertDetailModal(alert);
 }
 
 async function loadAlerts() {

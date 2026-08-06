@@ -1,128 +1,206 @@
-# TxnSync
+# 🛡️ TxnSync — Real-Time Fraud Transaction & Alert Sync Platform
 
-TxnSync is a transaction monitoring app: a Spring Boot + MySQL backend that stores accounts, transactions, monitoring rules, and the alerts those rules trigger, paired with a vanilla HTML/CSS/JS dashboard for viewing and managing them.
+![Java 17](https://img.shields.io/badge/Java-17-orange.svg)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen.svg)
+![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)
+![Jenkins](https://img.shields.io/badge/Jenkins-CI%2FCD-red.svg)
+![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
+**TxnSync** is an enterprise-grade financial transaction monitoring, multi-currency rule evaluation, and real-time fraud alert management platform. Built with a high-performance **Spring Boot 3.x** backend and a responsive **Vanilla JS/CSS** dashboard, TxnSync automatically ingests transactions, normalizes foreign currencies, evaluates risk thresholds, and enforces strict alert investigation workflows.
 
-## Project structure
+---
 
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    User[Risk Analyst / System User] -->|HTTP / SPA| Frontend[Frontend Nginx Container :8083]
+    Frontend -->|REST API Requests| Backend[Spring Boot REST Service :8082]
+    
+    subgraph Spring Boot Backend Core
+        Backend --> Controller[REST API Layer]
+        Controller --> Exception[GlobalExceptionHandler]
+        Controller --> Services[Business Logic Services]
+        Services --> RuleEngine[Multi-Currency Rule Engine]
+        RuleEngine --> CurrencyAPI[Exchange Rate API Service]
+        Services --> Repos[JDBC Data Access Layer]
+    end
+    
+    subgraph Data & Infra
+        Repos --> Database[(SQL Database / H2)]
+        Jenkins[Jenkins Pipeline] --> DockerCompose[Docker Compose Stack]
+    end
 ```
-.
-├── backend/txnSync/       # Spring Boot REST API (Java 17, Maven)
-│   └── src/main/java/com/finance/txnSync/
-│       ├── controllers/    # REST endpoints (accounts, transactions, rules, alerts)
-│       ├── services/       # Business logic (rule evaluation, alerting)
-│       ├── repositories/   # JDBC data access
-│       ├── models/         # Domain objects
-│       └── config/         # CORS configuration
-├── database/
-│   ├── schema.sql          # Table definitions (accounts, transactions, rules, alerts)
-│   └── data.sql            # Sample seed data
-└── frontend/               # Static dashboard (no build step, no framework)
-    ├── dashboard.html       # Overview: stat cards, breakdowns, recent activity
-    └── pages/               # Transactions, accounts, rules, alerts screens
-```
 
-## What it does
+---
 
-- **Accounts** — linked bank accounts that transactions belong to.
-- **Transactions** — debits/credits against an account, each with a payee, amount, currency, type, and status.
-- **Rules** — monitoring conditions (e.g. amount threshold, new/unseen payee, transaction velocity, daily volume) that can be active or inactive.
-- **Alerts** — automatically created when a processed transaction matches an active rule (e.g. a large transfer or a payee the account has never paid before); alerts move through an OPEN → ACKNOWLEDGED/INVESTIGATING → CLOSED workflow.
+## ✨ Key Features & Capabilities
 
-## Features
+### 💳 1. Fraud Transaction Engine
+* Ingests financial transactions across accounts with support for multiple currencies (`USD`, `EUR`, `GBP`, `INR`, etc.).
+* Automated risk scoring for transaction movement, anomaly detection, and new/unseen payee identification.
 
-- **Dashboard overview** — stat cards (volume, linked accounts, active rules, open alerts), a transaction status breakdown, a transaction-type donut chart, recent transactions, and a recent alerts feed, all computed live from the API.
-- **Transaction processing with rule evaluation** — every transaction submitted through `POST /api/v1/transactions` is checked against all active rules (amount threshold, new/unseen payee, velocity, daily volume) and automatically opens an alert when one matches.
-- **Rule-based alerting workflow** — alerts carry a severity and move through `OPEN → ACKNOWLEDGED/INVESTIGATING → CLOSED`, with resolution notes and an acknowledged timestamp.
-- **Accounts, Transactions, Rules, and Alerts pages** — each with client-side search, filtering, sortable columns, and pagination (via a shared `DataTable` component), plus:
-  - **Transactions** — a "new transaction" form and a detail modal.
-  - **Accounts** — a "new account" form and a detail modal.
-  - **Rules** — an inline active/inactive toggle and an edit modal.
-  - **Alerts** — a detail modal and status-update workflow (acknowledge/investigate/close, with notes).
-- **No build step frontend** — plain HTML/CSS/ES6+, so any static file server works; no bundler, transpiler, or `npm install` required.
-- **Environment-driven backend config** — port, database connection, and CORS origins are all overridable via environment variables without touching source (see the table below).
-- **CORS configured out of the box** — `/api/**` and `/actuator/**` both have configurable allowed origins, so the static frontend can call the API from a different origin/port during local development.
-- **Interactive API docs** — Swagger UI (via springdoc-openapi) for exploring and trying endpoints without a separate client.
+### 💱 2. Dynamic Multi-Currency Rule Evaluation
+* Integrates with a real-time **Currency Exchange Rate API** (`CurrencyRateApi`) to normalize foreign currency transaction amounts to base currency before threshold rule evaluation.
+* Supports active/inactive toggles for Amount Threshold Rules, Volume-vs-Alerts Velocity Rules, and New Payee Rules.
 
-## Tech stack
+### 🔔 3. Alert Lifecycle State Machine
+* Enforces a strict, audited investigation lifecycle:
+  $$\text{OPEN} \longrightarrow \text{ACKNOWLEDGED} \longrightarrow \text{INVESTIGATING} \longrightarrow \text{CLOSED}$$
+* **Auto-Acknowledgment on Inspection:** Opening an alert automatically transitions its status from `OPEN` to `ACKNOWLEDGED` to eliminate repetitive manual clicks.
 
-- **Backend:** Java 17, Spring Boot, Spring MVC, JDBC (`JdbcTemplate`) — no ORM/JPA, hand-written SQL repositories.
-- **Database:** MySQL.
-- **Frontend:** Plain HTML5/CSS3/ES6+, no framework and no build step — served as static files and talks to the backend over `fetch`.
+### 🎨 4. Tri-Theme & Accessibility User Experience
+* **Tri-Theme Engine:** One-click instant switching between **Light Mode**, **Dark Mode**, and **Pink Mode** with `localStorage` persistence.
+* **Accessibility Drawer:** Built-in font scaling (+ / -), high-contrast toggle mode, and ARIA-compliant UI components.
+* **Interactive Data Visualizations:** Integrated Chart.js analytics for Alert Lifecycle breakdown, Rule-Type trigger distribution, and Transaction Volume trends.
 
-## Prerequisites
+### 🛡️ 5. Enterprise Hardening & Automated Testing
+* **Centralized Exception Handling:** Spring `@ControllerAdvice` (`GlobalExceptionHandler`) catching custom domain exceptions and returning uniform, client-friendly HTTP JSON errors.
+* **50+ Automated Unit & MockMVC Integration Tests:** Complete test coverage across controllers (`AccountControllerTest`, `AlertControllerTest`, `RuleControllerTest`, `TransactionControllerTest`) and service layers (`TransactionServiceTest`, `AlertServiceTest`, `RuleServiceTest`, `AccountServiceTest`).
 
-- Java 17 or later
-- Maven (or the included Maven Wrapper — `mvnw`/`mvnw.cmd`)
-- MySQL Server
-- Any static file server for the frontend (VS Code Live Server, `npx serve`, `python -m http.server`, etc.)
+### 🐳 6. Containerization & CI/CD Pipeline
+* **Multi-Stage Docker Builds:** Optimized `Dockerfile` definitions for both Spring Boot backend and Nginx/Static frontend.
+* **Zero-Configuration Orchestration:** `docker-compose.yml` launches the complete stack (Backend on `:8082`, Frontend on `:8083`, DB readiness checks) with a single command.
+* **Jenkins Automation:** Enterprise `Jenkinsfile` for continuous build, test execution, and image artifact packaging.
 
-## 1. Database setup
+---
 
-Create the database, then load the schema and (optionally) the sample seed data:
+## 🛠️ Technology Stack
 
-```sql
-CREATE DATABASE txn_sync_db;
-```
+| Layer | Component | Technology |
+| :--- | :--- | :--- |
+| **Backend Framework** | Application Server | Java 17, Spring Boot 3.x, Spring MVC |
+| **Data Access** | Persistence | Spring JDBC (`JdbcTemplate`), Hand-written Repository SQL |
+| **Database** | Database Engine | SQL Database / Embedded H2 (`01-schema.sql`, `02-data.sql`) |
+| **Testing** | QA & Integration | JUnit 5, Mockito, Spring Boot Test |
+| **Frontend UI** | Presentation | HTML5, Vanilla CSS3 (Custom Design System), Modular ES6 JS |
+| **Visualizations** | Charts | Chart.js |
+| **Containerization** | DevOps | Docker, Docker Compose |
+| **CI/CD** | Pipeline | Jenkins (`Jenkinsfile`) |
+
+---
+
+## 🚀 Quick Start & Deployment
+
+### Option A: Zero-Config Docker Compose (Recommended)
+
+Run the full production-ready stack (Backend, Frontend, DB) with one command:
 
 ```bash
-mysql -u root -p txn_sync_db < database/schema.sql
-mysql -u root -p txn_sync_db < database/data.sql   -- optional sample data
+docker-compose up --build
 ```
 
-## 2. Backend configuration
+Access the services:
+* 🌐 **Web Dashboard:** `http://localhost:8083`
+* 🔌 **Backend REST API:** `http://localhost:8082`
 
-Configuration lives in [backend/txnSync/src/main/resources/application.properties](backend/txnSync/src/main/resources/application.properties). Everything can be overridden with environment variables instead of editing the file:
+---
 
-| Property | Env var | Default |
-|---|---|---|
-| Server port | `PORT` | `8080` |
-| Datasource URL | `DB_URL` | `jdbc:mysql://localhost:3306/txn_sync_db` |
-| Datasource username | `DB_USER` | `root` |
-| Datasource password | `DB_PASS` | — |
-| API CORS origins (`/api/**`) | `APP_CORS_ORIGINS` | `*` |
-| Actuator CORS origins | `ACTUATOR_ALLOWED_ORIGINS` | `http://127.0.0.1:5501,http://localhost:5501` |
+### Option B: Local Development Execution
 
-> **Note:** Do not commit your personal database password to the repository — set `DB_PASS` in your environment instead of editing the checked-in default.
+#### 1. Backend Setup (Spring Boot)
+```bash
+cd backend/txnSync
 
-## 3. Running the backend
+# Run via Maven Wrapper (Windows)
+.\mvnw.cmd spring-boot:run
+
+# Run via Maven Wrapper (Linux/macOS)
+./mvnw spring-boot:run
+```
+The backend API starts at `http://localhost:8080`.
+
+#### 2. Frontend Setup
+The `frontend/` directory consists of static ES6 web assets:
+```bash
+cd frontend
+python -m http.server 5500
+```
+Open `http://localhost:5500` in your browser.
+
+---
+
+### Option C: Running Automated Tests
+
+To execute the full suite of 50+ unit and integration tests:
 
 ```bash
 cd backend/txnSync
+./mvnw test
 ```
 
-```bash
-# Windows
-mvnw.cmd spring-boot:run
+---
 
-# Linux/macOS
-./mvnw spring-boot:run
+## ⚙️ Environment Configuration
+
+Backend properties in `application.properties` can be overridden via environment variables:
+
+| Property | Environment Variable | Default Value | Description |
+| :--- | :--- | :--- | :--- |
+| `server.port` | `PORT` | `8080` (Local) / `8082` (Docker) | HTTP Server Port |
+| `spring.datasource.url` | `DB_URL` | `jdbc:h2:mem:txn_sync_db` | JDBC Database Connection URL |
+| `spring.datasource.username` | `DB_USER` | `sa` | Database User |
+| `spring.datasource.password` | `DB_PASS` | — | Database Password |
+| `app.cors.origins` | `APP_CORS_ORIGINS` | `*` | Allowed CORS Origins |
+
+---
+
+## 🔌 REST API Quick Reference
+
+| Method | Endpoint | Description | Status Code |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/transactions` | Fetch all financial transactions | `200 OK` |
+| `POST` | `/api/v1/transactions` | Ingest transaction & trigger rule engine | `201 Created` |
+| `GET` | `/api/v1/alerts` | Fetch all fraud alerts | `200 OK` |
+| `PUT` | `/api/v1/alerts/{id}/status` | Update alert lifecycle state (`OPEN` $\rightarrow$ `CLOSED`) | `200 OK` |
+| `GET` | `/api/v1/rules` | List all active/inactive fraud rules | `200 OK` |
+| `POST` | `/api/v1/rules` | Create new fraud threshold rule | `201 Created` |
+| `GET` | `/health` | Application health check endpoint | `200 OK` |
+
+---
+
+## 📂 Repository Structure
+
+```
+.
+├── backend/txnSync/              # Spring Boot 3.x Backend (Java 17)
+│   ├── Dockerfile                # Multi-stage Docker build for Backend
+│   ├── src/main/java/            # Controllers, Services, Repositories, Models
+│   └── src/test/java/            # Comprehensive 50+ Unit & Integration Tests
+├── database/                     # SQL Database Scripts
+│   ├── 01-schema.sql             # Table DDL definitions
+│   └── 02-data.sql               # Seed data
+├── frontend/                     # Vanilla JS Dashboard (Static SPA)
+│   ├── Dockerfile                # Nginx Docker container for Frontend
+│   ├── dashboard.html            # Main Dashboard SPA view
+│   ├── css/                      # Modular CSS stylesheets
+│   └── js/                       # Modular ES6 controllers & API layer
+├── chirag/                       # Agile Product & Project Documentation Suite
+│   ├── README.md                 # Agile Documentation Hub Index
+│   ├── 01-feature-list.md        # Epic Breakdown & Feature Specs
+│   ├── 02-user-stories.md        # Agile User Stories
+│   ├── 03-acceptance-criteria.md # Given-When-Then Acceptance Criteria
+│   ├── 04-system-architecture.md# Technical Architecture & Diagram
+│   ├── 05-screen-flow.md         # UI Navigation Flow
+│   ├── KANBAN.md                 # Project Task Board
+│   ├── MOM.md                    # Minutes of Customer Meetings
+│   ├── TRACEABILITY_MATRIX.md    # Requirement Traceability Matrix
+│   └── DECISION_LOG.md           # Architectural Decision Records (ADRs)
+├── docker-compose.yml            # Full stack multi-container orchestration
+└── Jenkinsfile                   # CI/CD Automation Pipeline
 ```
 
-The API starts on `http://localhost:8080`, with endpoints under `http://localhost:8080/api/v1/...`:
+---
 
-| Resource | Base path | Notes |
-|---|---|---|
-| Accounts | `/api/v1/accounts` | list, get by id, create |
-| Transactions | `/api/v1/transactions` | list, get by id, create (triggers rule evaluation) |
-| Rules | `/api/v1/rules` | list, get by id, update |
-| Alerts | `/api/v1/alerts` | list, get by id, update status |
+## 📋 Agile Project Documentation Hub
 
-Health check: `http://localhost:8080/actuator/health`.
-Interactive API docs (Swagger UI via springdoc-openapi): `http://localhost:8080/swagger-ui/index.html`.
+For complete product specifications, user stories, Gherkin acceptance criteria, customer meeting notes, and requirement traceability matrices, visit our **Agile Project Hub**:
 
-## 4. Running the frontend
+* 📖 [**Agile Documentation Suite (`/chirag/README.md`)**](./chirag/README.md)
+* 📊 [**Live GitHub Projects Board**](https://github.com/orgs/Neueda-Learning/projects/36/views/2)
 
-The `frontend/` folder is static — serve it with any static file server, for example:
+---
 
-```bash
-# from the frontend/ folder
-py -m http.server 5500
-```
+## 📜 License
 
-Then open `http://localhost:5500`. The frontend's API base URL is a single constant in [frontend/js/api.js](frontend/js/api.js) (`API_BASE_URL`) — update it if the backend isn't on `http://localhost:8080`. See [frontend/README.md](frontend/README.md) for more detail on the frontend, including known issues.
-
-## Known limitations
-
-- **No authentication** — every endpoint and every dashboard page is open.
-- **No automated tests beyond a couple of smoke tests** in `backend/txnSync/src/test/`.
+Distributed under the MIT License. See `LICENSE` for more information.

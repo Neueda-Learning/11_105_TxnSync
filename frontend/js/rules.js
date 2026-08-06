@@ -1,8 +1,3 @@
-/**
- * Rules page — table (search/filter/sort/pagination), inline active/inactive
- * toggle, and an edit modal wired to PUT /api/v1/rules/{id} (the only write
- * endpoint the Rule API exposes — there is no create or delete).
- */
 
 let ruleTable = null;
 let allRules = [];
@@ -19,14 +14,6 @@ function buildRuleFilterFn() {
   };
 }
 
-/**
- * A rule only ever uses a threshold amount (AMOUNT/DAILY_LIMIT) OR a time
- * window + count (VELOCITY) — never both — so Threshold and Window/Count are
- * merged into one Configuration column that shows whichever value that rule
- * actually has, instead of two mostly-empty columns. The column itself only
- * disappears if not a single currently loaded rule has any configuration at
- * all (e.g. every rule were a parameterless type like NEW_PAYEE).
- */
 function ruleConfigText(r) {
   if (r.thresholdAmount != null) return TxnSyncUI.formatCurrency(r.thresholdAmount, 'USD');
   const parts = [];
